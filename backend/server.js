@@ -1,9 +1,10 @@
-// backend/server.js - Updated version
+// backend/server.js - Complete version
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const voteRoutes = require('./routes/voteRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes'); // Added feedback routes
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
@@ -59,6 +60,9 @@ app.use('/api/', limiter);
 // Mount vote routes at /api/votes
 app.use('/api/votes', voteRoutes);
 
+// Mount feedback routes at /api/feedback
+app.use('/api/feedback', feedbackRoutes);
+
 // ==================== HEALTH CHECK ====================
 app.get('/health', (req, res) => {
   res.status(200).json({ 
@@ -81,6 +85,7 @@ app.get('/', (req, res) => {
       root: '/',
       health: '/health',
       vote: '/api/votes',
+      feedback: '/api/feedback',
       stats: '/api/votes/stats',
       recent: '/api/votes/recent',
       admin_all: '/api/votes/admin/all',
@@ -100,6 +105,7 @@ app.use('*', (req, res) => {
       { method: 'GET', path: '/', description: 'API Information' },
       { method: 'GET', path: '/health', description: 'Health Check' },
       { method: 'POST', path: '/api/votes', description: 'Cast a vote' },
+      { method: 'POST', path: '/api/feedback', description: 'Submit feedback' },
       { method: 'GET', path: '/api/votes/stats', description: 'Get vote statistics' },
       { method: 'GET', path: '/api/votes/recent', description: 'Get recent votes' },
       { method: 'GET', path: '/api/votes/admin/all', description: 'Get all votes (admin)' },
@@ -128,6 +134,7 @@ const server = app.listen(PORT, () => {
   console.log('  GET  /                    - API Information');
   console.log('  GET  /health              - Health Check');
   console.log('  POST /api/votes           - Cast a vote');
+  console.log('  POST /api/feedback        - Submit feedback');
   console.log('  GET  /api/votes/stats     - Vote statistics');
   console.log('  GET  /api/votes/recent    - Recent votes');
   console.log('  GET  /api/votes/admin/all - All votes (admin)');
