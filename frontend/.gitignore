@@ -1,8 +1,6 @@
-# frontend/.gitignore
-
 # Dependencies
 node_modules/
-/.pnp
+.pnp
 .pnp.js
 .yarn/install-state.gz
 
@@ -33,6 +31,7 @@ yarn-error.log*
 
 # OS
 Thumbs.db
+Desktop.ini
 
 # Logs
 logs
