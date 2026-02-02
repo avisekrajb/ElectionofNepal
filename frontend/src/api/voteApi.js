@@ -122,7 +122,7 @@ API.interceptors.response.use(
 );
 
 // ============================================
-// API FUNCTIONS
+// API FUNCTIONS - ALL FUNCTIONS INCLUDED
 // ============================================
 
 // Cast a vote
@@ -212,6 +212,82 @@ const getRecentVotes = async (limit = 10) => {
   }
 };
 
+// Get all votes (admin only)
+const getAllVotes = async () => {
+  try {
+    console.log('👑 Fetching all votes (admin)...');
+    
+    const response = await API.get('/votes/admin/all');
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to fetch votes');
+    }
+    
+    console.log('✅ All votes fetched');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed to fetch all votes:', error.message);
+    throw error.response?.data || error;
+  }
+};
+
+// Get age statistics (admin only)
+const getAgeStats = async () => {
+  try {
+    console.log('📈 Fetching age statistics...');
+    
+    const response = await API.get('/votes/admin/age-stats');
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to fetch age statistics');
+    }
+    
+    console.log('✅ Age stats fetched');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed to fetch age statistics:', error.message);
+    throw error.response?.data || error;
+  }
+};
+
+// Get candidate statistics (admin only)
+const getCandidateStats = async () => {
+  try {
+    console.log('🎯 Fetching candidate statistics...');
+    
+    const response = await API.get('/votes/admin/candidate-stats');
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to fetch candidate statistics');
+    }
+    
+    console.log('✅ Candidate stats fetched');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed to fetch candidate statistics:', error.message);
+    throw error.response?.data || error;
+  }
+};
+
+// Reset all votes (admin only - for testing)
+const resetVotes = async () => {
+  try {
+    console.log('🔄 Resetting all votes...');
+    
+    const response = await API.delete('/votes/admin/reset');
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to reset votes');
+    }
+    
+    console.log('✅ Votes reset successful');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed to reset votes:', error.message);
+    throw error.response?.data || error;
+  }
+};
+
 // Test connection
 const testConnection = async () => {
   try {
@@ -230,8 +306,45 @@ const testConnection = async () => {
   }
 };
 
+// Batch requests for dashboard data
+const getDashboardData = async () => {
+  try {
+    const [stats, recent] = await Promise.all([
+      getVoteStats(),
+      getRecentVotes()
+    ]);
+    
+    return {
+      success: true,
+      stats: stats.data,
+      recent: recent.data
+    };
+  } catch (error) {
+    console.error('❌ Failed to fetch dashboard data:', error);
+    throw error;
+  }
+};
+
+// Check backend status
+const checkBackendStatus = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`);
+    return {
+      accessible: response.ok,
+      status: response.status,
+      url: API_BASE_URL
+    };
+  } catch (error) {
+    return {
+      accessible: false,
+      error: error.message,
+      url: API_BASE_URL
+    };
+  }
+};
+
 // ============================================
-// EXPORTS - FIXED: No duplicate exports
+// EXPORTS - ALL FUNCTIONS EXPORTED
 // ============================================
 
 export default API;
@@ -241,5 +354,11 @@ export {
   castVote,
   getVoteStats,
   getRecentVotes,
-  testConnection
+  getAllVotes,
+  getAgeStats,
+  getCandidateStats,
+  resetVotes,
+  testConnection,
+  getDashboardData,
+  checkBackendStatus
 };
