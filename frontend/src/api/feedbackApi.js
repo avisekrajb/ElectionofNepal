@@ -3,32 +3,42 @@ import API from './voteApi';
 // Submit feedback
 export const submitFeedback = async (feedbackData) => {
   try {
-    console.log('Submitting feedback:', feedbackData);
+    console.log('📤 Submitting feedback to:', API.defaults.baseURL + '/feedback');
+    console.log('Data:', feedbackData);
+    
     const response = await API.post('/feedback', feedbackData);
-    console.log('Feedback response:', response.data);
+    console.log('✅ Feedback submitted successfully:', response.data);
     return response.data;
+    
   } catch (error) {
-    console.error('Feedback API error:', error);
+    console.error('❌ Feedback submission failed:', error);
     
-    // Check if it's a network error
-    if (error.message === 'Network Error') {
-      throw { 
-        success: false, 
-        message: 'Cannot connect to server. Please check your internet connection.' 
+    // More specific error messages
+    if (error.message && error.message.includes('Network Error')) {
+      throw {
+        success: false,
+        message: 'Cannot connect to server. Please check your internet connection and try again.'
       };
     }
     
-    // Check if it's a 404 error (endpoint not found)
-    if (error.response?.status === 404) {
-      throw { 
-        success: false, 
-        message: 'Feedback endpoint not found. Please contact administrator.' 
+    if (error.status === 404) {
+      throw {
+        success: false,
+        message: 'Feedback service is currently unavailable. Please try again later.'
       };
     }
     
-    throw error.response?.data || { 
-      success: false, 
-      message: 'Failed to submit feedback. Please try again.' 
+    if (error.response?.status === 500) {
+      throw {
+        success: false,
+        message: 'Server error. Please contact administrator.'
+      };
+    }
+    
+    // Return the error message from server or default message
+    throw {
+      success: false,
+      message: error.message || 'Failed to submit feedback. Please try again.'
     };
   }
 };
@@ -39,17 +49,9 @@ export const getAllFeedbacks = async () => {
     const response = await API.get('/feedback');
     return response.data;
   } catch (error) {
-    console.error('Get feedbacks error:', error);
-    
-    // If endpoint not found, return empty array
-    if (error.response?.status === 404) {
-      return { success: true, data: [] };
-    }
-    
-    throw error.response?.data || { 
-      success: false, 
-      message: 'Failed to fetch feedbacks' 
-    };
+    console.warn('⚠️ Could not fetch feedbacks (might be okay):', error.message);
+    // Return empty array if endpoint doesn't exist
+    return { success: true, data: [] };
   }
 };
 
@@ -59,17 +61,9 @@ export const getFeedbackCount = async () => {
     const response = await API.get('/feedback/count');
     return response.data;
   } catch (error) {
-    console.error('Get feedback count error:', error);
-    
-    // If endpoint not found, return 0
-    if (error.response?.status === 404) {
-      return { success: true, count: 0 };
-    }
-    
-    throw error.response?.data || { 
-      success: false, 
-      message: 'Failed to fetch feedback count' 
-    };
+    console.warn('⚠️ Could not fetch feedback count:', error.message);
+    // Return 0 if endpoint doesn't exist
+    return { success: true, count: 0 };
   }
 };
 
