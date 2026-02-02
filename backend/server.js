@@ -9,7 +9,6 @@ const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
-const path = require('path');
 
 // ============================================
 // ENVIRONMENT CONFIGURATION
@@ -61,7 +60,7 @@ connectDB();
 const app = express();
 
 // ============================================
-// CORS CONFIGURATION - FIXED
+// CORS CONFIGURATION
 // ============================================
 
 console.log('\n🔧 CONFIGURING CORS...');
@@ -123,12 +122,10 @@ const corsOptions = {
     'Accept',
     'Origin',
     'Access-Control-Allow-Headers'
-    // REMOVED: 'X-Request-ID' - This was causing CORS issues
   ],
   exposedHeaders: [
     'Content-Range',
     'X-Content-Range'
-    // REMOVED: 'X-Response-Time', 'X-Request-ID' - Not needed
   ],
   optionsSuccessStatus: 200,
   maxAge: 86400, // 24 hours
@@ -459,14 +456,15 @@ app.use('*', (req, res) => {
 });
 
 // ============================================
-// ERROR HANDLING MIDDLEWARE
+// ERROR HANDLING MIDDLEWARE - FIXED
 // ============================================
 
+// First, use the custom error handler
 app.use(errorHandler);
 
-// Global error handler
+// Then, global error handler as fallback
 app.use((err, req, res, next) => {
-  console.error('🔥 Unhandled Error:', {
+  console.error('🔥 Global Error Handler:', {
     error: err.message,
     stack: err.stack,
     url: req.originalUrl,
@@ -474,14 +472,18 @@ app.use((err, req, res, next) => {
     ip: req.ip
   });
   
-  // Don't leak stack trace in production
+  // Check if headers have already been sent
+  if (res.headersSent) {
+    return next(err);
+  }
+  
   const errorResponse = {
     success: false,
     message: isProduction ? 'Internal server error' : err.message,
     timestamp: new Date().toISOString()
   };
   
-  if (!isProduction) {
+  if (!isProduction && err.stack) {
     errorResponse.stack = err.stack;
   }
   
@@ -545,13 +547,6 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log('='.repeat(70));
   console.log('✅ Server is ready to accept requests!');
   console.log('='.repeat(70));
-  
-  // Test database connection
-  if (mongoose.connection.readyState === 1) {
-    console.log('✅ MongoDB connection established');
-  } else {
-    console.log('❌ MongoDB connection failed');
-  }
 });
 
 // ============================================
@@ -582,11 +577,10 @@ server.on('error', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('\n❌ UNHANDLED PROMISE REJECTION:');
   console.error('Reason:', reason);
-  console.error('Promise:', promise);
   
   // Don't exit in production, just log
   if (!isProduction) {
-    process.exit(1);
+    console.error('Stack:', reason.stack);
   }
 });
 
