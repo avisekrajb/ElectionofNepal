@@ -25,21 +25,25 @@
         align-items: center;
         z-index: 9999;
         transition: opacity 0.5s ease-out;
+        padding: 20px;
+        box-sizing: border-box;
       }
       
       .loader-container {
         text-align: center;
         color: white;
-        padding: 20px;
+        width: 100%;
+        max-width: 400px;
+        padding: 0;
       }
       
       .flag-container {
         position: relative;
-        width: 200px;
-        height: 130px;
-        margin: 0 auto 30px;
+        width: 150px;
+        height: 100px;
+        margin: 0 auto 20px;
         animation: flag-float 3s infinite ease-in-out;
-        filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.3));
+        filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
       }
       
       .flag-image {
@@ -61,62 +65,43 @@
       
       .loader-text {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
       }
       
       .main-title {
-        font-size: 2.8rem;
+        font-size: 2rem;
         font-weight: bold;
-        margin-bottom: 10px;
-        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
-        background: linear-gradient(to right, #ffcc00, #ffd700, #ffffff);
+        margin-bottom: 8px;
+        text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+        background: linear-gradient(to right, #ffcc00, #ffd700);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        letter-spacing: 1.5px;
-        position: relative;
-      }
-      
-      .main-title::after {
-        content: '';
-        position: absolute;
-        bottom: -8px;
-        left: 25%;
-        width: 50%;
-        height: 3px;
-        background: linear-gradient(to right, transparent, #ffcc00, transparent);
-        border-radius: 2px;
-      }
-      
-      .subtitle {
-        font-size: 1.4rem;
-        opacity: 0.9;
         letter-spacing: 1px;
-        margin-top: 15px;
-        color: #ffd700;
-        font-weight: 500;
       }
       
       .devnagari-title {
-        font-size: 2.2rem;
-        margin-bottom: 15px;
+        font-size: 1.5rem;
+        margin-bottom: 10px;
         color: #ffffff;
-        text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+        text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.5);
         font-weight: 600;
       }
       
       .loading-bar-container {
-        width: 350px;
-        margin: 30px auto;
+        width: 100%;
+        max-width: 280px;
+        margin: 20px auto;
         background: rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        padding: 15px;
+        border-radius: 8px;
+        padding: 12px;
         backdrop-filter: blur(5px);
         border: 1px solid rgba(255, 255, 255, 0.1);
+        box-sizing: border-box;
       }
       
       .loading-text {
-        font-size: 0.9rem;
-        margin-bottom: 10px;
+        font-size: 0.85rem;
+        margin-bottom: 8px;
         color: #ffcc00;
         display: flex;
         justify-content: space-between;
@@ -124,9 +109,9 @@
       
       .loading-bar {
         width: 100%;
-        height: 10px;
+        height: 8px;
         background: rgba(255, 255, 255, 0.15);
-        border-radius: 5px;
+        border-radius: 4px;
         overflow: hidden;
         position: relative;
       }
@@ -134,8 +119,8 @@
       .loading-progress {
         width: 0%;
         height: 100%;
-        background: linear-gradient(90deg, #ffcc00, #ff9900, #ff6600);
-        border-radius: 5px;
+        background: linear-gradient(90deg, #ffcc00, #ff9900);
+        border-radius: 4px;
         animation: loading 2s linear forwards;
         position: relative;
         overflow: hidden;
@@ -158,60 +143,32 @@
       
       .percentage {
         position: absolute;
-        right: -40px;
+        right: -30px;
         top: 50%;
         transform: translateY(-50%);
         font-weight: bold;
         color: #ffcc00;
-        font-size: 0.9rem;
-        animation: count-up 2s linear forwards;
+        font-size: 0.8rem;
       }
       
       .loading-dots {
         display: flex;
         justify-content: center;
-        margin: 25px 0;
-        gap: 12px;
+        margin: 15px 0;
+        gap: 8px;
       }
       
       .dot {
-        width: 14px;
-        height: 14px;
+        width: 10px;
+        height: 10px;
         background: linear-gradient(135deg, #ffcc00, #ff9900);
         border-radius: 50%;
         animation: bounce 1.4s infinite ease-in-out;
-        box-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+        box-shadow: 0 0 8px rgba(255, 204, 0, 0.5);
       }
       
       .dot:nth-child(1) { animation-delay: -0.32s; }
       .dot:nth-child(2) { animation-delay: -0.16s; }
-      
-      .election-message {
-        margin-top: 25px;
-        font-size: 0.95rem;
-        opacity: 0.85;
-        max-width: 500px;
-        text-align: center;
-        line-height: 1.6;
-        color: #e6e6e6;
-        padding: 15px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.05);
-        border-left: 3px solid #ffcc00;
-      }
-      
-      .secure-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 15px;
-        padding: 8px 16px;
-        background: rgba(0, 184, 148, 0.2);
-        border-radius: 20px;
-        font-size: 0.85rem;
-        color: #00b894;
-        border: 1px solid rgba(0, 184, 148, 0.3);
-      }
       
       .fallback-flag {
         width: 100%;
@@ -226,7 +183,7 @@
       
       .fallback-flag span {
         color: white;
-        font-size: 24px;
+        font-size: 20px;
       }
       
       /* Animations */
@@ -236,19 +193,6 @@
         50% { width: 65%; }
         75% { width: 85%; }
         100% { width: 100%; }
-      }
-      
-      @keyframes count-up {
-        0% { content: "0%"; }
-        25% { content: "30%"; }
-        50% { content: "65%"; }
-        75% { content: "85%"; }
-        100% { content: "100%"; }
-      }
-      
-      .percentage::after {
-        content: "0%";
-        animation: count-up 2s linear forwards;
       }
       
       @keyframes bounce {
@@ -267,7 +211,7 @@
           transform: translateY(0) rotate(0deg);
         }
         50% { 
-          transform: translateY(-10px) rotate(1deg);
+          transform: translateY(-8px) rotate(1deg);
         }
       }
       
@@ -297,23 +241,56 @@
         opacity: 1;
       }
       
-      /* Responsive adjustments */
-      @media (max-width: 768px) {
+      /* Mobile optimizations */
+      @media (max-width: 480px) {
         .flag-container {
-          width: 150px;
-          height: 100px;
+          width: 120px;
+          height: 80px;
         }
         
         .main-title {
-          font-size: 2rem;
+          font-size: 1.6rem;
         }
         
         .devnagari-title {
-          font-size: 1.8rem;
+          font-size: 1.3rem;
         }
         
         .loading-bar-container {
-          width: 280px;
+          max-width: 250px;
+          padding: 10px;
+        }
+        
+        .loading-text {
+          font-size: 0.8rem;
+        }
+        
+        .dot {
+          width: 8px;
+          height: 8px;
+        }
+        
+        .fallback-flag span {
+          font-size: 16px;
+        }
+      }
+      
+      @media (max-width: 320px) {
+        .flag-container {
+          width: 100px;
+          height: 70px;
+        }
+        
+        .main-title {
+          font-size: 1.4rem;
+        }
+        
+        .devnagari-title {
+          font-size: 1.1rem;
+        }
+        
+        .loading-bar-container {
+          max-width: 220px;
         }
       }
     </style>
@@ -335,12 +312,11 @@
         <div class="loader-text">
           <div class="devnagari-title">नेपाल निर्वाचन २०८३</div>
           <h1 class="main-title">Nepal Election 2026</h1>
-          <p class="subtitle">Digital Voting Platform</p>
         </div>
         
         <div class="loading-bar-container">
           <div class="loading-text">
-            <span>Initializing System</span>
+            <span>Loading...</span>
             <span class="percentage">0%</span>
           </div>
           <div class="loading-bar">
@@ -353,16 +329,6 @@
           <div class="dot"></div>
           <div class="dot"></div>
         </div>
-        
-        <div class="election-message">
-          <strong>Secure Voting System Initialization</strong><br>
-          Loading encrypted voting interface and verifying voter credentials...
-        </div>
-        
-        <div class="secure-badge">
-          <span>🔒</span>
-          <span>Military-Grade Encryption Active</span>
-        </div>
       </div>
     </div>
     
@@ -373,7 +339,6 @@
       // Wait for DOM to be fully loaded
       document.addEventListener('DOMContentLoaded', function() {
         const percentageElement = document.querySelector('.percentage');
-        const progressBar = document.querySelector('.loading-progress');
         const nepalFlag = document.getElementById('nepal-flag');
         let progress = 0;
         
@@ -415,8 +380,8 @@
             if (loader) {
               loader.style.display = 'none';
             }
-          }, 500); // Wait for opacity transition to complete
-        }, 2000); // 2 second loader display
+          }, 500);
+        }, 2000);
       });
     </script>
   </body>
