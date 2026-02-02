@@ -1,46 +1,71 @@
 import axios from 'axios';
 
+// Production and development URLs
+const PRODUCTION_CONFIG = {
+  FRONTEND_URL: 'https://nepalvote.onrender.com',
+  BACKEND_URL: 'https://electionofnepal.onrender.com',
+  API_BASE: 'https://electionofnepal.onrender.com/api'
+};
+
+const DEVELOPMENT_CONFIG = {
+  LOCAL_BACKEND: 'http://localhost:5000',
+  LOCAL_API: 'http://localhost:5000/api',
+  MOBILE_IP: '192.168.1.67',
+  MOBILE_API: 'http://192.168.1.67:5000/api'
+};
+
 // Get the current API URL dynamically
 const getApiBaseUrl = () => {
-  // If REACT_APP_API_URL is set, use it (highest priority)
-  if (process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL;
+  const hostname = window.location.hostname;
+  const currentUrl = window.location.origin;
+  
+  console.log('🌐 Current URL:', currentUrl);
+  console.log('🏠 Hostname:', hostname);
+  
+  // Production environment
+  if (hostname.includes('nepalvote.onrender.com')) {
+    console.log('🚀 Production mode detected');
+    return PRODUCTION_CONFIG.API_BASE;
   }
   
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol;
-  const port = window.location.port;
-  
-  // Development environment
+  // Development environments
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return `http://localhost:5000/api`;
+    console.log('🔧 Development mode (localhost)');
+    return DEVELOPMENT_CONFIG.LOCAL_API;
   }
   
   // Mobile/network access
-  if (hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
-    return `http://${hostname}:5000/api`;
+  if (hostname === DEVELOPMENT_CONFIG.MOBILE_IP) {
+    console.log('📱 Mobile development mode');
+    return DEVELOPMENT_CONFIG.MOBILE_API;
   }
   
-  // Production - use same origin
+  // Default to environment variable or relative path
+  const envUrl = process.env.REACT_APP_API_URL;
+  if (envUrl) {
+    console.log('⚙️ Using environment variable:', envUrl);
+    return envUrl;
+  }
+  
+  // Fallback to relative path for same-origin deployment
+  console.log('⚠️ Using relative path fallback');
   return '/api';
 };
 
-// Log API URL in development only
-if (process.env.NODE_ENV === 'development') {
-  console.log('API Base URL:', getApiBaseUrl());
-  console.log('Environment:', process.env.NODE_ENV);
-  console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
-}
+const API_BASE_URL = getApiBaseUrl();
+console.log('🎯 Final API Base URL:', API_BASE_URL);
 
-// Create axios instance
+// Create axios instance with optimized settings
 const API = axios.create({
-  baseURL: getApiBaseUrl(),
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
   },
-  timeout: process.env.NODE_ENV === 'production' ? 15000 : 10000, // 15s in prod, 10s in dev
-  withCredentials: false,
+  timeout: 15000, // 15 seconds for production
+  maxRedirects: 5,
+  maxContentLength: 50 * 1024 * 1024, // 50MB
   validateStatus: function (status) {
     return status >= 200 && status < 500; // Resolve only if status code is less than 500
   }
@@ -49,112 +74,117 @@ const API = axios.create({
 // Request interceptor
 API.interceptors.request.use(
   (config) => {
-    // Add cache busting for GET requests in development
-    if (process.env.NODE_ENV === 'development' && config.method === 'get') {
+    // Add cache busting for GET requests
+    if (config.method === 'get') {
       config.params = {
         ...config.params,
-        _t: Date.now()
+        _: Date.now() // Cache buster
       };
     }
     
-    // Log requests in development only
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`📤 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.params || '');
-    }
+    // Add request ID for tracking
+    config.headers['X-Request-ID'] = Date.now();
+    
+    console.log(`📤 ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
     
     return config;
   },
   (error) => {
     console.error('❌ Request Error:', error);
-    return Promise.reject(error);
+    return Promise.reject({
+      success: false,
+      message: 'Request configuration failed',
+      originalError: error.message
+    });
   }
 );
 
 // Response interceptor
 API.interceptors.response.use(
   (response) => {
-    // Log responses in development only
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`📥 API Response: ${response.status} ${response.config.url}`, response.data);
+    const responseTime = response.headers['x-response-time'] || 'N/A';
+    console.log(`📥 ${response.status} ${response.config.url} (${responseTime})`);
+    
+    // Check if response has success flag
+    if (response.data && response.data.success === false) {
+      console.warn('⚠️ API returned success: false', response.data);
     }
     
     return response;
   },
   (error) => {
-    let errorMessage = 'Network error. Please check your connection.';
-    let errorCode = 'NETWORK_ERROR';
+    // Enhanced error handling
+    let errorMessage = 'Network error. Please check your internet connection.';
+    let errorType = 'network';
+    let shouldRetry = false;
+    let statusCode = 0;
     
     if (error.code === 'ECONNABORTED') {
-      errorMessage = 'Request timeout. Please try again.';
-      errorCode = 'TIMEOUT';
+      errorMessage = 'Request timeout. The server is taking too long to respond.';
+      errorType = 'timeout';
+      shouldRetry = true;
+    } else if (error.code === 'ENOTFOUND') {
+      errorMessage = `Cannot connect to server. Please check if the backend is running.`;
+      errorMessage += `\nTried to connect to: ${API_BASE_URL}`;
+      errorType = 'connection';
+    } else if (error.code === 'CORS') {
+      errorMessage = 'CORS error. Please check server CORS configuration.';
+      errorType = 'cors';
     } else if (error.response) {
       // Server responded with error status
-      const status = error.response.status;
+      statusCode = error.response.status;
       
-      switch (status) {
+      switch (statusCode) {
         case 400:
-          errorMessage = error.response.data?.message || 'Bad request. Please check your data.';
-          errorCode = 'BAD_REQUEST';
+          errorMessage = error.response.data?.message || 'Bad request. Please check your input.';
           break;
         case 401:
-          errorMessage = 'Unauthorized. Please log in.';
-          errorCode = 'UNAUTHORIZED';
+          errorMessage = 'Unauthorized. Please login again.';
           break;
         case 403:
-          errorMessage = 'Access forbidden.';
-          errorCode = 'FORBIDDEN';
+          errorMessage = 'Access forbidden. You do not have permission.';
           break;
         case 404:
-          errorMessage = error.response.data?.message || 'Resource not found.';
-          errorCode = 'NOT_FOUND';
+          errorMessage = 'API endpoint not found.';
           break;
         case 409:
-          errorMessage = error.response.data?.message || 'Conflict occurred.';
-          errorCode = 'CONFLICT';
+          errorMessage = error.response.data?.message || 'Conflict detected.';
           break;
         case 429:
-          errorMessage = 'Too many requests. Please try again later.';
-          errorCode = 'RATE_LIMIT';
+          errorMessage = 'Too many requests. Please slow down.';
+          shouldRetry = true;
           break;
         case 500:
-          errorMessage = 'Server error. Please try again later.';
-          errorCode = 'SERVER_ERROR';
+          errorMessage = 'Internal server error. Please try again later.';
+          errorType = 'server';
+          shouldRetry = true;
           break;
+        case 502:
         case 503:
-          errorMessage = 'Service unavailable. Please try again later.';
-          errorCode = 'SERVICE_UNAVAILABLE';
+        case 504:
+          errorMessage = 'Service temporarily unavailable. Please try again in a few minutes.';
+          errorType = 'service';
+          shouldRetry = true;
           break;
         default:
-          errorMessage = error.response.data?.message || `Server error: ${status}`;
-          errorCode = `HTTP_${status}`;
+          errorMessage = error.response.data?.message || 
+                        `Server error: ${statusCode}`;
       }
       
-      // Log detailed error in development
-      if (process.env.NODE_ENV === 'development') {
-        console.error('🔴 API Error Response:', {
-          status: error.response.status,
-          data: error.response.data,
-          url: error.config.url,
-          method: error.config.method
-        });
-      }
+      console.error('❌ API Error:', {
+        status: statusCode,
+        url: error.config.url,
+        method: error.config.method,
+        data: error.response.data,
+        headers: error.response.headers
+      });
     } else if (error.request) {
       // Request made but no response
-      errorMessage = 'Cannot connect to server. Please check:';
-      errorMessage += '\n1. Is the backend server running?';
-      errorMessage += '\n2. Check console for CORS errors';
-      errorMessage += '\n3. Verify network connection';
-      errorCode = 'NO_RESPONSE';
-      
-      console.error('❌ No response received. Possible issues:');
-      console.error('   - Backend server not running');
-      console.error('   - CORS configuration issue');
-      console.error('   - Network connectivity problem');
-      console.error('   - Incorrect API URL:', getApiBaseUrl());
+      errorMessage = 'No response from server. The backend might be down.';
+      console.error('❌ No response received for:', error.config.url);
     } else {
       // Something else happened
-      errorMessage = error.message;
-      errorCode = 'UNKNOWN_ERROR';
+      errorMessage = error.message || 'Unknown error occurred';
     }
     
     // Special handling for duplicate vote
@@ -163,105 +193,161 @@ API.interceptors.response.use(
         success: false, 
         message: errorMessage,
         contactAdmin: true,
-        code: errorCode
+        errorType: 'duplicate'
       });
     }
     
-    // Return formatted error
+    // Add retry suggestion for certain errors
+    if (shouldRetry) {
+      errorMessage += '\n\nYou can try again in a few moments.';
+    }
+    
+    // Log detailed error for debugging
+    console.error('❌ Error Details:', {
+      message: errorMessage,
+      type: errorType,
+      code: error.code,
+      status: statusCode,
+      config: {
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        method: error.config?.method
+      }
+    });
+    
     return Promise.reject({ 
       success: false, 
       message: errorMessage,
-      code: errorCode,
-      timestamp: new Date().toISOString()
+      errorType: errorType,
+      statusCode: statusCode,
+      shouldRetry: shouldRetry,
+      originalError: error.message
     });
   }
 );
 
-// Test server connection
+// ==================== API FUNCTIONS ====================
+
+// Test server connection with detailed diagnostics
 export const testConnection = async () => {
   try {
-    const response = await API.get('/health');
+    console.log('🔍 Testing connection to:', API_BASE_URL);
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ Server health check:', response.data);
-    }
+    const startTime = Date.now();
+    const response = await API.get('/health', {
+      timeout: 5000, // Quick health check
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      }
+    });
+    const responseTime = Date.now() - startTime;
     
-    return {
-      success: true,
-      data: response.data,
-      connected: true,
+    const healthData = {
+      ...response.data,
+      responseTime: `${responseTime}ms`,
+      apiUrl: API_BASE_URL,
       timestamp: new Date().toISOString()
     };
-  } catch (error) {
-    console.error('❌ Server connection test failed:', error.message);
     
-    return {
+    console.log('✅ Server health check:', healthData);
+    
+    return healthData;
+  } catch (error) {
+    console.error('❌ Server connection test failed:', error);
+    
+    // Provide helpful debugging info
+    const debugInfo = {
       success: false,
-      message: error.message,
-      connected: false,
-      timestamp: new Date().toISOString(),
-      suggestion: 'Make sure backend server is running on port 5000'
+      message: 'Cannot connect to server',
+      apiUrl: API_BASE_URL,
+      currentOrigin: window.location.origin,
+      errorDetails: error.message,
+      suggestions: [
+        'Check if backend server is running',
+        'Verify CORS configuration',
+        'Check network connectivity',
+        'Try accessing the API URL directly in browser'
+      ]
     };
+    
+    throw debugInfo;
   }
 };
 
 // Cast a vote
 export const castVote = async (voteData) => {
   try {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🗳️ Casting vote:', voteData);
-    }
+    console.log('🗳️ Casting vote:', {
+      name: voteData.name,
+      age: voteData.age,
+      candidateId: voteData.candidateId
+    });
     
     const response = await API.post('/votes', voteData);
     
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to cast vote');
-    }
+    console.log('✅ Vote cast successful:', response.data);
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ Vote cast successful:', response.data);
-    }
-    
-    return response.data;
+    return {
+      ...response.data,
+      timestamp: new Date().toISOString()
+    };
   } catch (error) {
-    console.error('❌ Vote cast failed:', error.message);
+    console.error('❌ Vote cast failed:', error);
     
-    // Re-throw the error for the calling component to handle
-    throw error.response?.data || error;
+    // Enhanced error for duplicate votes
+    if (error.contactAdmin) {
+      throw {
+        ...error,
+        showContact: true,
+        adminContact: 'WhatsApp: +977-9800000000'
+      };
+    }
+    
+    throw error;
   }
 };
 
 // Get vote statistics
 export const getVoteStats = async () => {
   try {
-    const response = await API.get('/votes/stats');
+    console.log('📊 Fetching vote statistics...');
     
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to fetch vote stats');
-    }
+    const response = await API.get('/votes/stats', {
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Vote stats fetched:', response.data.data?.totalVotes || 0, 'total votes');
-    }
+    console.log('✅ Vote stats fetched:', {
+      totalVotes: response.data.data?.totalVotes || 0,
+      candidates: response.data.data?.votesByCandidate?.length || 0
+    });
     
     return response.data;
   } catch (error) {
-    console.error('❌ Failed to fetch vote stats:', error.message);
+    console.error('❌ Failed to fetch vote stats:', error);
     
-    // Return fallback data for development
+    // Return mock data for development if server is down
     if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ Using fallback vote stats for development');
+      console.warn('⚠️ Returning mock data for development');
       return {
         success: true,
         data: {
-          totalVotes: 0,
-          votesByCandidate: [],
-          recentVotes: []
+          totalVotes: 150,
+          votesByCandidate: [
+            { _id: "c1", candidateName: "Gagan Thapa", candidateParty: "Nepali Congress", votes: 45 },
+            { _id: "c2", candidateName: "K. P. Sharma Oli", candidateParty: "CPN (UML)", votes: 38 },
+            { _id: "c3", candidateName: "Balendra Shah (Balen)", candidateParty: "Rastriya Swatantra Party", votes: 67 }
+          ],
+          recentVotes: [
+            { name: "Test User", candidateParty: "Nepali Congress" },
+            { name: "Demo User", candidateParty: "CPN (UML)" }
+          ]
         }
       };
     }
     
-    throw error.response?.data || error;
+    throw error;
   }
 };
 
@@ -269,49 +355,30 @@ export const getVoteStats = async () => {
 export const getRecentVotes = async () => {
   try {
     const response = await API.get('/votes/recent');
-    
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to fetch recent votes');
-    }
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Recent votes fetched:', response.data.data?.length || 0, 'votes');
-    }
-    
+    console.log('✅ Recent votes fetched:', response.data.data?.length || 0, 'votes');
     return response.data;
   } catch (error) {
-    console.error('❌ Failed to fetch recent votes:', error.message);
-    
-    // Return empty array for development
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ Using empty recent votes for development');
-      return {
-        success: true,
-        data: []
-      };
-    }
-    
-    throw error.response?.data || error;
+    console.error('❌ Failed to fetch recent votes:', error);
+    throw error;
   }
 };
+
+// ==================== ADMIN FUNCTIONS ====================
 
 // Get all votes (admin only)
 export const getAllVotes = async () => {
   try {
-    const response = await API.get('/votes/admin/all');
+    console.log('👑 Fetching all votes (admin)...');
     
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to fetch votes');
-    }
+    const response = await API.get('/votes/admin/all', {
+      timeout: 30000 // Longer timeout for large data
+    });
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('👑 All votes fetched:', response.data.count || 0, 'votes');
-    }
-    
+    console.log('✅ All votes fetched:', response.data.count || 0, 'votes');
     return response.data;
   } catch (error) {
-    console.error('❌ Failed to fetch all votes:', error.message);
-    throw error.response?.data || error;
+    console.error('❌ Failed to fetch all votes:', error);
+    throw error;
   }
 };
 
@@ -319,19 +386,11 @@ export const getAllVotes = async () => {
 export const getAgeStats = async () => {
   try {
     const response = await API.get('/votes/admin/age-stats');
-    
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to fetch age statistics');
-    }
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📈 Age stats fetched:', response.data.data);
-    }
-    
+    console.log('✅ Age stats fetched');
     return response.data;
   } catch (error) {
-    console.error('❌ Failed to fetch age statistics:', error.message);
-    throw error.response?.data || error;
+    console.error('❌ Failed to fetch age statistics:', error);
+    throw error;
   }
 };
 
@@ -339,54 +398,29 @@ export const getAgeStats = async () => {
 export const getCandidateStats = async () => {
   try {
     const response = await API.get('/votes/admin/candidate-stats');
-    
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to fetch candidate statistics');
-    }
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🎯 Candidate stats fetched:', response.data.data?.length || 0, 'candidates');
-    }
-    
+    console.log('✅ Candidate stats fetched:', response.data.data?.length || 0, 'candidates');
     return response.data;
   } catch (error) {
-    console.error('❌ Failed to fetch candidate statistics:', error.message);
-    throw error.response?.data || error;
+    console.error('❌ Failed to fetch candidate statistics:', error);
+    throw error;
   }
 };
 
 // Reset all votes (admin only - for testing)
 export const resetVotes = async () => {
   try {
+    console.log('🔄 Resetting all votes...');
+    
     const response = await API.delete('/votes/admin/reset');
     
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to reset votes');
-    }
-    
-    console.log('🔄 Votes reset successful:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('❌ Failed to reset votes:', error.message);
-    throw error.response?.data || error;
-  }
-};
-
-// Batch requests for better performance
-export const getDashboardData = async () => {
-  try {
-    const [stats, recent] = await Promise.all([
-      getVoteStats(),
-      getRecentVotes()
-    ]);
+    console.log('✅ Votes reset successful');
     
     return {
-      success: true,
-      stats: stats.data,
-      recent: recent.data
+      ...response.data,
+      resetTime: new Date().toISOString()
     };
   } catch (error) {
-    console.error('❌ Failed to fetch dashboard data:', error);
+    console.error('❌ Failed to reset votes:', error);
     throw error;
   }
 };
