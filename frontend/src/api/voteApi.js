@@ -1,12 +1,12 @@
 import axios from 'axios';
 
 // ============================================
-// API URL CONFIGURATION
+// API URL CONFIGURATION - FIXED
 // ============================================
 
 /**
  * Get the current API URL dynamically
- * Priority: REACT_APP_API_URL > Production detection > Local development
+ * IMPORTANT: Backend is at https://electionofnepal.onrender.com (not /api)
  */
 const getApiBaseUrl = () => {
   // Priority 1: Environment variable (set in Render.com dashboard)
@@ -21,31 +21,33 @@ const getApiBaseUrl = () => {
   
   // Priority 2: Production detection (Render.com)
   if (hostname.includes('nepalvote.onrender.com')) {
-    const productionBackendUrl = 'https://electionofnepal.onrender.com/api';
+    // BACKEND URL: https://electionofnepal.onrender.com
+    // NO /api suffix because backend routes are at root
+    const productionBackendUrl = 'https://electionofnepal.onrender.com';
     console.log('🚀 Production mode detected, using backend:', productionBackendUrl);
     return productionBackendUrl;
   }
   
   // Priority 3: Development/local
   if (isLocalhost || isDevelopment) {
-    const devUrl = 'http://localhost:5000/api';
+    // Local backend runs on port 5000 with routes at root
+    const devUrl = 'http://localhost:5000';
     console.log('🔧 Development mode, using:', devUrl);
     return devUrl;
   }
   
   // Priority 4: Mobile/network access
   if (hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
-    const mobileUrl = `http://${hostname}:5000/api`;
+    const mobileUrl = `http://${hostname}:5000`;
     console.log('📱 Mobile/LAN access, using:', mobileUrl);
     return mobileUrl;
   }
   
-  // Priority 5: Fallback - Check if frontend and backend are on same domain
+  // Priority 5: Fallback - use same origin
   console.warn('⚠️ Using fallback. Consider setting REACT_APP_API_URL');
   console.log('🌐 Current hostname:', hostname);
   
-  // If frontend is on same domain as backend (rare for separate services)
-  return '/api';
+  return ''; // Same origin
 };
 
 // Initialize API URL
@@ -54,11 +56,12 @@ console.log('🌍 API Configuration:', {
   baseURL: API_BASE_URL,
   environment: process.env.NODE_ENV,
   hostname: window.location.hostname,
-  REACT_APP_API_URL: process.env.REACT_APP_API_URL || 'Not set'
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL || 'Not set',
+  frontend: window.location.origin
 });
 
 // ============================================
-// AXIOS INSTANCE CONFIGURATION
+// AXIOS INSTANCE CONFIGURATION - FIXED
 // ============================================
 
 // Create axios instance with optimized configuration
@@ -68,6 +71,7 @@ const API = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest'
+    // REMOVED: 'X-Request-ID' - This was causing CORS issues
   },
   timeout: process.env.NODE_ENV === 'production' ? 20000 : 15000, // 20s in prod, 15s in dev
   withCredentials: false, // Set to false for cross-origin requests
@@ -80,7 +84,7 @@ const API = axios.create({
 });
 
 // ============================================
-// REQUEST INTERCEPTOR
+// REQUEST INTERCEPTOR - FIXED
 // ============================================
 
 API.interceptors.request.use(
@@ -94,8 +98,8 @@ API.interceptors.request.use(
       };
     }
     
-    // Add request ID for tracking
-    config.headers['X-Request-ID'] = Date.now() + Math.random().toString(36).substr(2, 9);
+    // REMOVED: Don't add X-Request-ID - it's not allowed by CORS
+    // config.headers['X-Request-ID'] = Date.now() + Math.random().toString(36).substr(2, 9);
     
     // Log requests
     const logLevel = process.env.NODE_ENV === 'development' ? 'debug' : 'info';
@@ -132,11 +136,6 @@ API.interceptors.response.use(
         data: response.data,
         headers: response.headers
       });
-    }
-    
-    // Check for CORS headers (for debugging)
-    if (!response.headers['access-control-allow-origin']) {
-      console.warn('⚠️ No CORS headers in response. This may cause issues in production.');
     }
     
     return response;
@@ -287,7 +286,7 @@ API.interceptors.response.use(
 );
 
 // ============================================
-// API FUNCTIONS
+// API FUNCTIONS - UPDATED ENDPOINTS
 // ============================================
 
 /**
@@ -624,7 +623,7 @@ const getDashboardData = async () => {
  */
 const checkBackendStatus = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`, {
+    const response = await fetch(`${API_BASE_URL}/health`, {
       method: 'HEAD',
       mode: 'cors',
       cache: 'no-cache'
@@ -648,11 +647,13 @@ const checkBackendStatus = async () => {
 };
 
 // ============================================
-// EXPORTS - FIXED: No duplicate exports
+// EXPORTS
 // ============================================
 
+// Default export (axios instance)
 export default API;
 
+// Named exports
 export {
   API_BASE_URL,
   getApiBaseUrl,
