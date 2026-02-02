@@ -1,474 +1,324 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#ffffff" />
-    <meta name="description" content="Nepal Election 2026 - Cast your vote online" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Nepal Election 2026 - Cast your vote online"
+    />
     <title>Nepal Election 2026</title>
     <style>
-        /* Reset & Base Styles */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+      /* Loader Styles */
+      #loader-wrapper {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0d1b3e 0%, #1a3a6c 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease-out;
+      }
+      
+      .loader-container {
+        text-align: center;
+        color: white;
+        padding: 20px;
+      }
+      
+      .flag-container {
+        position: relative;
+        width: 120px;
+        height: 80px;
+        margin: 0 auto 20px;
+        animation: flag-float 3s infinite ease-in-out;
+        filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
+      }
+      
+      .flag-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      
+      .flag-glow {
+        position: absolute;
+        top: -10px;
+        left: -10px;
+        width: 140px;
+        height: 100px;
+        background: radial-gradient(ellipse at center, rgba(220, 20, 60, 0.4) 0%, transparent 70%);
+        z-index: -1;
+        animation: pulse-glow 2s infinite alternate;
+      }
+      
+      .loader-text {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin-bottom: 15px;
+      }
+      
+      .main-title {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+        text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.5);
+        background: linear-gradient(to right, #ffcc00, #ffd700);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: 1px;
+      }
+      
+      .subtitle {
+        font-size: 1rem;
+        opacity: 0.9;
+        color: #ffd700;
+        font-weight: 500;
+        margin-bottom: 15px;
+      }
+      
+      .loading-bar-container {
+        width: 250px;
+        margin: 15px auto;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 10px;
+        backdrop-filter: blur(5px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
+      .loading-bar {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+        position: relative;
+      }
+      
+      .loading-progress {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #ffcc00, #ff9900);
+        border-radius: 3px;
+        animation: loading 2s linear forwards;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .loading-progress::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, 
+          transparent, 
+          rgba(255, 255, 255, 0.3), 
+          transparent
+        );
+        animation: shimmer 1.5s infinite;
+      }
+      
+      .percentage {
+        position: absolute;
+        right: -35px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-weight: bold;
+        color: #ffcc00;
+        font-size: 0.8rem;
+        min-width: 30px;
+      }
+      
+      .loading-dots {
+        display: flex;
+        justify-content: center;
+        margin: 15px 0;
+        gap: 8px;
+      }
+      
+      .dot {
+        width: 10px;
+        height: 10px;
+        background: linear-gradient(135deg, #ffcc00, #ff9900);
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out;
+        box-shadow: 0 0 6px rgba(255, 204, 0, 0.4);
+      }
+      
+      .dot:nth-child(1) { animation-delay: -0.32s; }
+      .dot:nth-child(2) { animation-delay: -0.16s; }
+      
+      .mini-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 10px;
+        padding: 5px 10px;
+        background: rgba(0, 184, 148, 0.15);
+        border-radius: 12px;
+        font-size: 0.7rem;
+        color: #00b894;
+        border: 1px solid rgba(0, 184, 148, 0.2);
+      }
+      
+      /* Animations */
+      @keyframes loading {
+        0% { width: 0%; }
+        25% { width: 30%; }
+        50% { width: 65%; }
+        75% { width: 85%; }
+        100% { width: 100%; }
+      }
+      
+      @keyframes bounce {
+        0%, 80%, 100% { 
+          transform: scale(0.7);
+          opacity: 0.5;
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #ffffff;
-            color: #333333;
-            overflow: hidden;
-            min-height: 100vh;
+        40% { 
+          transform: scale(1.1);
+          opacity: 1;
         }
-
-        /* Loader Container */
-        #loader-wrapper {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            background: #ffffff;
+      }
+      
+      @keyframes flag-float {
+        0%, 100% { 
+          transform: translateY(0) rotate(0deg);
         }
-
-        /* Centered Content Box */
-        .loader-content {
-            width: 100%;
-            max-width: 500px;
-            padding: 40px;
-            text-align: center;
+        50% { 
+          transform: translateY(-5px) rotate(0.5deg);
         }
-
-        /* Nepal Flag Display */
-        .flag-display {
-            width: 180px;
-            height: 120px;
-            margin: 0 auto 40px;
-            position: relative;
+      }
+      
+      @keyframes pulse-glow {
+        0% { opacity: 0.2; }
+        100% { opacity: 0.4; }
+      }
+      
+      @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
+      
+      /* Hide loader */
+      .loaded #loader-wrapper {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      /* Root element */
+      #root {
+        opacity: 0;
+        transition: opacity 0.5s ease-in;
+      }
+      
+      .loaded #root {
+        opacity: 1;
+      }
+      
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .flag-container {
+          width: 100px;
+          height: 65px;
         }
-
-        .flag-wrapper {
-            width: 100%;
-            height: 100%;
-            animation: gentleFloat 3s ease-in-out infinite;
-        }
-
-        .nepal-flag {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
-        }
-
-        .flag-border {
-            position: absolute;
-            top: -10px;
-            left: -10px;
-            right: -10px;
-            bottom: -10px;
-            border: 2px solid rgba(220, 20, 60, 0.1);
-            border-radius: 8px;
-            pointer-events: none;
-        }
-
-        /* Titles */
-        .title-section {
-            margin-bottom: 40px;
-        }
-
+        
         .main-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #1a1a1a;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
+          font-size: 1.5rem;
         }
-
-        .nepali-title {
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: #666666;
-            margin-bottom: 16px;
+        
+        .subtitle {
+          font-size: 0.9rem;
         }
-
-        .election-year {
-            display: inline-block;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #dc143c;
-            padding: 6px 20px;
-            border: 2px solid #dc143c;
-            border-radius: 20px;
-            background: rgba(220, 20, 60, 0.05);
+        
+        .loading-bar-container {
+          width: 200px;
         }
-
-        /* Progress Section */
-        .progress-container {
-            margin: 30px 0;
-        }
-
-        .progress-label {
-            font-size: 0.95rem;
-            color: #666666;
-            margin-bottom: 12px;
-            font-weight: 500;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background: #f0f0f0;
-            border-radius: 2px;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, #dc143c, #003893);
-            border-radius: 2px;
-            animation: loadProgress 2s ease-out forwards;
-        }
-
-        .percentage-display {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #1a1a1a;
-            font-family: 'Courier New', monospace;
-        }
-
-        /* Status Indicators */
-        .status-indicators {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
-            color: #666666;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #e0e0e0;
-            transition: all 0.3s ease;
-        }
-
-        .status-dot.active {
-            background: #dc143c;
-            box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.1);
-        }
-
-        /* Loading Animation */
-        .loading-animation {
-            margin-top: 30px;
-        }
-
-        .wave-dots {
-            display: flex;
-            justify-content: center;
-            gap: 6px;
-            height: 20px;
-        }
-
-        .wave-dot {
-            width: 4px;
-            height: 4px;
-            background: #dc143c;
-            border-radius: 50%;
-            animation: wave 1.5s ease-in-out infinite;
-        }
-
-        .wave-dot:nth-child(2) {
-            animation-delay: 0.1s;
-            background: #003893;
-        }
-
-        .wave-dot:nth-child(3) {
-            animation-delay: 0.2s;
-        }
-
-        .wave-dot:nth-child(4) {
-            animation-delay: 0.3s;
-            background: #003893;
-        }
-
-        .wave-dot:nth-child(5) {
-            animation-delay: 0.4s;
-        }
-
-        /* Fallback Flag */
-        .fallback-flag {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                to bottom,
-                #dc143c 0% 33%,
-                #ffffff 33% 66%,
-                #003893 66% 100%
-            );
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .fallback-emoji {
-            font-size: 36px;
-        }
-
-        /* Animations */
-        @keyframes gentleFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-
-        @keyframes loadProgress {
-            0% { width: 0%; }
-            25% { width: 30%; }
-            50% { width: 65%; }
-            75% { width: 85%; }
-            100% { width: 100%; }
-        }
-
-        @keyframes wave {
-            0%, 60%, 100% { 
-                transform: translateY(0);
-                opacity: 0.3;
-            }
-            30% { 
-                transform: translateY(-8px);
-                opacity: 1;
-            }
-        }
-
-        /* Loading States */
-        .loaded #loader-wrapper {
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.5s ease-out;
-        }
-
-        #root {
-            opacity: 0;
-            transition: opacity 0.5s ease-in;
-        }
-
-        .loaded #root {
-            opacity: 1;
-        }
-
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .loader-content {
-                padding: 30px;
-            }
-
-            .flag-display {
-                width: 150px;
-                height: 100px;
-                margin-bottom: 30px;
-            }
-
-            .main-title {
-                font-size: 2rem;
-            }
-
-            .nepali-title {
-                font-size: 1.5rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .loader-content {
-                padding: 20px;
-            }
-
-            .flag-display {
-                width: 120px;
-                height: 80px;
-                margin-bottom: 25px;
-            }
-
-            .main-title {
-                font-size: 1.8rem;
-            }
-
-            .nepali-title {
-                font-size: 1.3rem;
-            }
-
-            .election-year {
-                font-size: 1rem;
-                padding: 5px 16px;
-            }
-
-            .percentage-display {
-                font-size: 1.1rem;
-            }
-        }
+      }
     </style>
-</head>
-<body>
-    <!-- White Background Loader -->
+  </head>
+  <body>
+    <!-- Loader -->
     <div id="loader-wrapper">
-        <div class="loader-content">
-            <!-- Nepal Flag -->
-            <div class="flag-display">
-                <div class="flag-wrapper">
-                    <img 
-                        src="https://hampshireflag.co.uk/wp-content/uploads/2023/03/HFC20Nepal20Flag.png" 
-                        alt="Nepal Flag" 
-                        class="nepal-flag"
-                        id="nepal-flag"
-                    />
-                </div>
-                <div class="flag-border"></div>
-            </div>
-
-            <!-- Titles -->
-            <div class="title-section">
-                <div class="main-title">Nepal Election</div>
-                <div class="nepali-title">नेपाल निर्वाचन</div>
-                <div class="election-year">2026 • २०८३</div>
-            </div>
-
-            <!-- Progress -->
-            <div class="progress-container">
-                <div class="progress-label">Initializing voting system</div>
-                <div class="progress-bar">
-                    <div class="progress-fill"></div>
-                </div>
-                <div class="percentage-display" id="percentage">0%</div>
-            </div>
-
-            <!-- Status Indicators -->
-            <div class="status-indicators">
-                <div class="status-item">
-                    <div class="status-dot" id="dot1"></div>
-                    <span>System</span>
-                </div>
-                <div class="status-item">
-                    <div class="status-dot" id="dot2"></div>
-                    <span>Security</span>
-                </div>
-                <div class="status-item">
-                    <div class="status-dot" id="dot3"></div>
-                    <span>Database</span>
-                </div>
-            </div>
-
-            <!-- Loading Animation -->
-            <div class="loading-animation">
-                <div class="wave-dots">
-                    <div class="wave-dot"></div>
-                    <div class="wave-dot"></div>
-                    <div class="wave-dot"></div>
-                    <div class="wave-dot"></div>
-                    <div class="wave-dot"></div>
-                </div>
-            </div>
+      <div class="loader-container">
+        <div class="flag-container">
+          <div class="flag-glow"></div>
+          <img 
+            src="https://hampshireflag.co.uk/wp-content/uploads/2023/03/HFC20Nepal20Flag.png" 
+            alt="Nepal Flag" 
+            class="flag-image"
+            onerror="this.onerror=null; this.style.display='none'; document.querySelector('.flag-container').innerHTML = '<div style=\'width:100%;height:100%;background:linear-gradient(to bottom, #dc143c 33%, white 33%, white 66%, #003893 66%);border-radius:4px;position:relative;display:flex;align-items:center;justify-content:center;\'><span style=\"color:white;font-size:18px;\">🇳🇵</span></div>'"
+          />
         </div>
+        
+        <div class="loader-text">
+          <h1 class="main-title">Nepal Election 2026</h1>
+          <p class="subtitle">नेपाल निर्वाचन २०८३</p>
+        </div>
+        
+        <div class="loading-bar-container">
+          <div class="loading-bar">
+            <div class="loading-progress"></div>
+            <div class="percentage">0%</div>
+          </div>
+        </div>
+        
+        <div class="loading-dots">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+        
+        <div class="mini-badge">
+          <span>🔒</span>
+          <span>Secure Access</span>
+        </div>
+      </div>
     </div>
-
+    
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
 
     <script>
-        // Handle flag loading error
-        function handleFlagError() {
-            const flagImg = document.getElementById('nepal-flag');
-            const flagWrapper = document.querySelector('.flag-wrapper');
-            
-            if (flagImg && flagWrapper) {
-                flagImg.style.display = 'none';
-                flagWrapper.innerHTML = `
-                    <div class="fallback-flag">
-                        <div class="fallback-emoji">🇳🇵</div>
-                    </div>
-                `;
+      // Wait for DOM to be fully loaded
+      document.addEventListener('DOMContentLoaded', function() {
+        const percentageElement = document.querySelector('.percentage');
+        let progress = 0;
+        
+        // Update percentage every 100ms
+        const interval = setInterval(function() {
+          progress += 5;
+          if (progress <= 100) {
+            percentageElement.textContent = progress + '%';
+          }
+        }, 100);
+        
+        // Show loader for exactly 2 seconds
+        setTimeout(function() {
+          clearInterval(interval);
+          percentageElement.textContent = '100%';
+          
+          // Add loaded class to body to trigger loader fade out
+          document.body.classList.add('loaded');
+          
+          // Remove loader from DOM after animation completes
+          setTimeout(function() {
+            const loader = document.getElementById('loader-wrapper');
+            if (loader) {
+              loader.style.display = 'none';
             }
-        }
-
-        // Initialize loader
-        document.addEventListener('DOMContentLoaded', function() {
-            // Setup flag error handling
-            const flagImg = document.getElementById('nepal-flag');
-            if (flagImg) {
-                flagImg.onerror = handleFlagError;
-            }
-
-            // Elements
-            const percentageElement = document.getElementById('percentage');
-            const dots = [
-                document.getElementById('dot1'),
-                document.getElementById('dot2'),
-                document.getElementById('dot3')
-            ];
-            
-            let progress = 0;
-            let currentDot = 0;
-
-            // Update progress
-            const interval = setInterval(() => {
-                progress += 1;
-                if (progress <= 100) {
-                    percentageElement.textContent = `${progress}%`;
-                    
-                    // Activate dots
-                    if (progress >= 33 && currentDot === 0) {
-                        dots[0].classList.add('active');
-                        currentDot++;
-                    }
-                    if (progress >= 66 && currentDot === 1) {
-                        dots[1].classList.add('active');
-                        currentDot++;
-                    }
-                    if (progress >= 90 && currentDot === 2) {
-                        dots[2].classList.add('active');
-                        currentDot++;
-                    }
-                }
-            }, 20);
-
-            // Complete loading after 2 seconds
-            setTimeout(() => {
-                clearInterval(interval);
-                percentageElement.textContent = '100%';
-
-                // Ensure all dots are active
-                dots.forEach(dot => {
-                    dot.classList.add('active');
-                });
-
-                // Fade out
-                setTimeout(() => {
-                    document.body.classList.add('loaded');
-                    
-                    setTimeout(() => {
-                        const loader = document.getElementById('loader-wrapper');
-                        if (loader) {
-                            loader.style.display = 'none';
-                        }
-                    }, 500);
-                }, 400);
-            }, 2000);
-        });
+          }, 500); // Wait for opacity transition to complete
+        }, 2000); // 2 second loader display
+      });
     </script>
-</body>
+  </body>
 </html>
