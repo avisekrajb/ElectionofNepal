@@ -369,9 +369,8 @@ export default function App() {
 
   /* ── FEEDBACK SUBMISSION ── */
 /* ── FEEDBACK SUBMISSION ── */
+/* ── FEEDBACK SUBMISSION ── */
 const handleSubmitFeedback = async () => {
-  console.log('📝 Handling feedback submission...');
-  
   if (!registered) {
     toast("Please register first to submit feedback!", "warn");
     setSheetPage("register");
@@ -379,35 +378,52 @@ const handleSubmitFeedback = async () => {
     return;
   }
 
-  const trimmedMessage = feedbackMessage.trim();
-  
-  if (!trimmedMessage) {
+  if (!feedbackMessage.trim()) {
     toast("Please enter your feedback message", "warn");
     return;
   }
 
-  if (trimmedMessage.length < 5) {
+  if (feedbackMessage.trim().length < 5) {
     toast("Feedback must be at least 5 characters", "warn");
     return;
   }
 
-  if (trimmedMessage.length > 500) {
-    toast("Feedback cannot exceed 500 characters", "warn");
-    return;
-  }
-
   setFeedbackLoading(true);
-  console.log('⏳ Submitting feedback...');
-  
   try {
     const feedbackData = {
       name: user.name.trim(),
       age: parseInt(user.age, 10),
-      message: trimmedMessage
+      message: feedbackMessage.trim()
     };
 
-    console.log('📊 Feedback data:', feedbackData);
+    const response = await apiSubmitFeedback(feedbackData);
     
+    if (response.success) {
+      toast(response.message, "success");
+      setFeedbackMessage("");
+      setShowFeedback(false);
+      
+      // Refresh feedback list and count
+      fetchFeedbacks();
+      fetchFeedbackCount();
+      
+      // Auto-reply toast
+      setTimeout(() => {
+        toast("Thank you for joining us! Our developer will reply soon. 💌", "info");
+      }, 1000);
+    }
+  } catch (error) {
+    // Check if it's a 404 endpoint error
+    if (error.endpointNotFound) {
+      toast("Feedback feature is temporarily unavailable. Please try again later.", "error");
+      console.log("Feedback endpoint not available:", error.message);
+    } else {
+      toast(error.message || "Failed to submit feedback", "error");
+    }
+  } finally {
+    setFeedbackLoading(false);
+  }
+};    
     const response = await apiSubmitFeedback(feedbackData);
     
     if (response.success) {
