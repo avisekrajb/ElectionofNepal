@@ -368,32 +368,86 @@ export default function App() {
   }, []);
 
   /* ── FEEDBACK SUBMISSION ── */
-  const handleSubmitFeedback = async () => {
-    if (!registered) {
-      toast("Please register first to submit feedback!", "warn");
-      setSheetPage("register");
-      setShowSheet(true);
-      return;
+/* ── FEEDBACK SUBMISSION ── */
+const handleSubmitFeedback = async () => {
+  console.log('📝 Handling feedback submission...');
+  
+  if (!registered) {
+    toast("Please register first to submit feedback!", "warn");
+    setSheetPage("register");
+    setShowSheet(true);
+    return;
+  }
+
+  const trimmedMessage = feedbackMessage.trim();
+  
+  if (!trimmedMessage) {
+    toast("Please enter your feedback message", "warn");
+    return;
+  }
+
+  if (trimmedMessage.length < 5) {
+    toast("Feedback must be at least 5 characters", "warn");
+    return;
+  }
+
+  if (trimmedMessage.length > 500) {
+    toast("Feedback cannot exceed 500 characters", "warn");
+    return;
+  }
+
+  setFeedbackLoading(true);
+  console.log('⏳ Submitting feedback...');
+  
+  try {
+    const feedbackData = {
+      name: user.name.trim(),
+      age: parseInt(user.age, 10),
+      message: trimmedMessage
+    };
+
+    console.log('📊 Feedback data:', feedbackData);
+    
+    const response = await apiSubmitFeedback(feedbackData);
+    
+    if (response.success) {
+      console.log('✅ Feedback submitted successfully');
+      toast(response.message, "success");
+      setFeedbackMessage("");
+      setShowFeedback(false);
+      
+      // Refresh feedback list and count
+      fetchFeedbacks();
+      fetchFeedbackCount();
+      
+      // Auto-reply toast
+      setTimeout(() => {
+        toast("Thank you for your valuable feedback! Our team will review it soon. 💌", "info");
+      }, 1000);
+    } else {
+      console.error('❌ Server returned error:', response);
+      toast(response.message || "Failed to submit feedback", "error");
     }
-
-    if (!feedbackMessage.trim()) {
-      toast("Please enter your feedback message", "warn");
-      return;
+  } catch (error) {
+    console.error('❌ Catch block error:', error);
+    
+    // Show user-friendly error message
+    const errorMessage = error.message || 
+                        (error.includes ? error : "Failed to submit feedback");
+    
+    toast(errorMessage, "error");
+    
+    // If it's a 404 error, show hint about backend
+    if (error.message && error.message.includes('unavailable') || 
+        error.message && error.message.includes('404')) {
+      setTimeout(() => {
+        toast("Tip: Backend might not be deployed. Running locally? Use http://localhost:5000", "info");
+      }, 2000);
     }
-
-    if (feedbackMessage.trim().length < 5) {
-      toast("Feedback must be at least 5 characters", "warn");
-      return;
-    }
-
-    setFeedbackLoading(true);
-    try {
-      const feedbackData = {
-        name: user.name.trim(),
-        age: parseInt(user.age, 10),
-        message: feedbackMessage.trim()
-      };
-
+  } finally {
+    setFeedbackLoading(false);
+  }
+};
       const response = await apiSubmitFeedback(feedbackData);
       
       if (response.success) {
