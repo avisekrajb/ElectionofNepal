@@ -17,6 +17,12 @@ const feedbackLimiter = rateLimit({
   }
 });
 
+// Debug middleware
+router.use((req, res, next) => {
+  console.log(`Feedback route accessed: ${req.method} ${req.url}`);
+  next();
+});
+
 router.post('/', feedbackLimiter, submitFeedback);
 router.get('/', getAllFeedbacks);
 router.get('/count', getFeedbackCount);
