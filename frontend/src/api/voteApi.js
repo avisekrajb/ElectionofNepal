@@ -293,7 +293,7 @@ API.interceptors.response.use(
 /**
  * Test server connection
  */
-export const testConnection = async () => {
+const testConnection = async () => {
   try {
     console.log('🔍 Testing connection to:', API_BASE_URL);
     
@@ -340,7 +340,7 @@ export const testConnection = async () => {
 /**
  * Cast a vote
  */
-export const castVote = async (voteData) => {
+const castVote = async (voteData) => {
   try {
     console.log('🗳️ Casting vote:', {
       candidate: voteData.candidateName,
@@ -387,7 +387,7 @@ export const castVote = async (voteData) => {
 /**
  * Get vote statistics
  */
-export const getVoteStats = async () => {
+const getVoteStats = async () => {
   try {
     console.log('📊 Fetching vote statistics...');
     
@@ -437,7 +437,7 @@ export const getVoteStats = async () => {
 /**
  * Get recent votes for marquee display
  */
-export const getRecentVotes = async (limit = 10) => {
+const getRecentVotes = async (limit = 10) => {
   try {
     console.log('🔄 Fetching recent votes...');
     
@@ -482,7 +482,7 @@ export const getRecentVotes = async (limit = 10) => {
 /**
  * Get all votes (admin only)
  */
-export const getAllVotes = async () => {
+const getAllVotes = async () => {
   try {
     console.log('👑 Fetching all votes (admin)...');
     
@@ -507,7 +507,7 @@ export const getAllVotes = async () => {
 /**
  * Get age statistics (admin only)
  */
-export const getAgeStats = async () => {
+const getAgeStats = async () => {
   try {
     console.log('📈 Fetching age statistics...');
     
@@ -531,7 +531,7 @@ export const getAgeStats = async () => {
 /**
  * Get candidate statistics (admin only)
  */
-export const getCandidateStats = async () => {
+const getCandidateStats = async () => {
   try {
     console.log('🎯 Fetching candidate statistics...');
     
@@ -555,7 +555,7 @@ export const getCandidateStats = async () => {
 /**
  * Reset all votes (admin only - for testing)
  */
-export const resetVotes = async () => {
+const resetVotes = async () => {
   try {
     console.log('🔄 Resetting all votes...');
     
@@ -576,7 +576,7 @@ export const resetVotes = async () => {
 /**
  * Batch requests for dashboard data
  */
-export const getDashboardData = async () => {
+const getDashboardData = async () => {
   try {
     console.log('📋 Fetching dashboard data...');
     const startTime = Date.now();
@@ -622,7 +622,7 @@ export const getDashboardData = async () => {
 /**
  * Check if backend is accessible
  */
-export const checkBackendStatus = async () => {
+const checkBackendStatus = async () => {
   try {
     const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`, {
       method: 'HEAD',
@@ -648,7 +648,7 @@ export const checkBackendStatus = async () => {
 };
 
 // ============================================
-// EXPORTS
+// EXPORTS - FIXED: No duplicate exports
 // ============================================
 
 export default API;
