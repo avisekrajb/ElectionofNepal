@@ -80,27 +80,27 @@ if (isProduction) {
   // Development logging
   app.use(morgan('dev'));
 }
+// Replace your CORS configuration with this:
 
-// ==================== CORS CONFIGURATION ====================
-const allowedOrigins = isProduction ? [
-  'https://nepal-election-frontend.onrender.com',
-  'https://nepal-election-2026.vercel.app',
-  'https://vote-nepal.vercel.app'
-] : [
-  'http://localhost:3000',
+// CORS configuration for production
+const allowedOrigins = [
+  'https://nepalvote.onrender.com', // Your frontend URL
+  'https://electionofnepal.onrender.com', // Your backend URL
+  'http://localhost:3000', // Local development
   'http://localhost:3001',
   'http://127.0.0.1:3000',
-  'http://192.168.1.67:3000'
+  'http://192.168.1.67:3000' // Mobile access
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin && !isProduction) return callback(null, true);
+    if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || !isProduction) {
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.log('CORS blocked for origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -113,7 +113,6 @@ app.use(cors({
 
 // Handle preflight requests
 app.options('*', cors());
-
 // ==================== BODY PARSER ====================
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ 
