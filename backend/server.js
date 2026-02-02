@@ -1,3 +1,4 @@
+// backend/server.js - Updated version
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
@@ -10,282 +11,127 @@ const compression = require('compression');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
 
-// ============================================
-// ENVIRONMENT CONFIGURATION
-// ============================================
-
 // Load environment variables
-dotenv.config({ path: '.env.production' });
+dotenv.config();
 
-console.log('='.repeat(60));
-console.log('🚀 STARTING NEPAL ELECTION 2026 BACKEND');
-console.log('='.repeat(60));
-console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);
-
-// Check if we're in production
-const isProduction = process.env.NODE_ENV === 'production';
-
-// Validate required environment variables
-if (!process.env.MONGODB_URI) {
-  console.error('❌ MISSING MONGODB_URI environment variable');
-  console.log('\n🔧 FOR RENDER.COM DEPLOYMENT:');
-  console.log('1. Go to Render.com dashboard → Backend service → Environment');
-  console.log('2. Add MONGODB_URI variable with your MongoDB connection string');
-  console.log('3. Format: mongodb+srv://username:password@cluster.mongodb.net/dbname');
-  process.exit(1);
-}
-
-// ============================================
-// DATABASE CONNECTION
-// ============================================
-
-console.log('\n🔗 CONNECTING TO DATABASE...');
-
-// Connect to MongoDB
-connectDB().catch(err => {
-  console.error('❌ Failed to connect to MongoDB:', err.message);
-  console.log('\n💡 TROUBLESHOOTING:');
-  console.log('1. Check your MONGODB_URI in Render.com environment variables');
-  console.log('2. Verify MongoDB cluster allows connections from anywhere (0.0.0.0/0)');
-  console.log('3. Ensure MongoDB Atlas IP whitelist includes 0.0.0.0/0');
-  console.log('4. Check MongoDB Atlas network access settings');
-  process.exit(1);
-});
+// Connect to database
+connectDB();
 
 const app = express();
 
-// ============================================
-// CORS CONFIGURATION
-// ============================================
+// ==================== SECURITY MIDDLEWARE ====================
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable for now to simplify
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
-console.log('\n🔧 CONFIGURING CORS...');
-
-const allowedOrigins = [
-  'https://nepalvote.onrender.com',
-  'https://electionofnepal.onrender.com',
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3000',
-  'http://192.168.1.67:3000'
-];
-
-// CORS middleware
+// ==================== CORS CONFIGURATION ====================
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl)
-    if (!origin) return callback(null, true);
-    
-    // Allow Render.com and local origins
-    if (origin.endsWith('.onrender.com') || 
-        origin.includes('localhost') || 
-        origin.includes('127.0.0.1') ||
-        origin.includes('192.168.')) {
-      return callback(null, true);
-    }
-    
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
+  origin: '*', // Allow all origins for now
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true
 }));
 
 // Handle preflight requests
 app.options('*', cors());
 
-// Additional CORS headers middleware
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  
-  if (origin && (origin.endsWith('.onrender.com') || origin.includes('localhost'))) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  next();
-});
-
-console.log('✅ CORS configured');
-
-// ============================================
-// SECURITY & PERFORMANCE MIDDLEWARE
-// ============================================
-
-// Security headers
-app.use(helmet({
-  contentSecurityPolicy: false, // Disable CSP for simplicity
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-
-// Compression
+// ==================== MIDDLEWARE ====================
 app.use(compression());
-
-// Logging
-app.use(morgan(isProduction ? 'combined' : 'dev'));
-
-// Body parsers
+app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ============================================
-// RATE LIMITING
-// ============================================
-
+// ==================== RATE LIMITING ====================
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 100, // Limit each IP to 100 requests per windowMs
   message: { 
     success: false, 
-    message: 'Too many requests from this IP' 
+    message: 'Too many requests from this IP, please try again later.' 
   }
 });
 
-app.use(limiter);
+app.use('/api/', limiter);
 
-// ============================================
-// ROUTES - CRITICAL: Mount voteRoutes at root
-// ============================================
-
-console.log('\n🛣️  LOADING ROUTES...');
-
-// FIX: Mount voteRoutes at /api/votes
+// ==================== ROUTES ====================
+// Mount vote routes at /api/votes
 app.use('/api/votes', voteRoutes);
 
-console.log('✅ Routes loaded:');
-console.log('   • POST /api/votes - Cast vote');
-console.log('   • GET  /api/votes/stats - Get stats');
-console.log('   • GET  /api/votes/recent - Get recent votes');
-console.log('   • GET  /api/votes/admin/* - Admin routes');
-
-// ============================================
-// HEALTH CHECK ENDPOINT
-// ============================================
-
+// ==================== HEALTH CHECK ====================
 app.get('/health', (req, res) => {
-  const health = {
-    success: true,
+  res.status(200).json({ 
+    success: true, 
     message: 'Server is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    environment: process.env.NODE_ENV
-  };
-  
-  res.status(200).json(health);
-});
-
-// ============================================
-// API INFO ENDPOINT
-// ============================================
-
-app.get('/api', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Nepal Election 2026 API',
-    version: '1.0.0',
-    endpoints: {
-      vote: 'POST /api/votes',
-      stats: 'GET /api/votes/stats',
-      recent: 'GET /api/votes/recent',
-      health: 'GET /health'
-    },
-    admin: {
-      all_votes: 'GET /api/votes/admin/all',
-      age_stats: 'GET /api/votes/admin/age-stats',
-      candidate_stats: 'GET /api/votes/admin/candidate-stats',
-      reset: 'DELETE /api/votes/admin/reset'
-    }
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// ============================================
-// ROOT ENDPOINT
-// ============================================
-
+// ==================== ROOT ENDPOINT ====================
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Welcome to Nepal Election 2026 Backend API',
+    message: '🇳🇵 Nepal Election 2026 API',
     version: '1.0.0',
-    documentation: 'Visit /api for endpoint details',
-    health: '/health',
-    frontend: 'https://nepalvote.onrender.com'
-  });
-});
-
-// ============================================
-// 404 HANDLER
-// ============================================
-
-app.use((req, res, next) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`,
-    available_routes: {
-      api: '/api',
+    endpoints: {
+      root: '/',
       health: '/health',
-      vote: 'POST /api/votes',
-      stats: 'GET /api/votes/stats',
-      recent: 'GET /api/votes/recent'
-    }
+      vote: '/api/votes',
+      stats: '/api/votes/stats',
+      recent: '/api/votes/recent',
+      admin_all: '/api/votes/admin/all',
+      admin_age_stats: '/api/votes/admin/age-stats',
+      admin_candidate_stats: '/api/votes/admin/candidate-stats'
+    },
+    documentation: 'Check GitHub repository for API documentation'
   });
 });
 
-// ============================================
-// ERROR HANDLER
-// ============================================
+// ==================== 404 HANDLER ====================
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    message: `Route ${req.originalUrl} not found`,
+    available_routes: [
+      { method: 'GET', path: '/', description: 'API Information' },
+      { method: 'GET', path: '/health', description: 'Health Check' },
+      { method: 'POST', path: '/api/votes', description: 'Cast a vote' },
+      { method: 'GET', path: '/api/votes/stats', description: 'Get vote statistics' },
+      { method: 'GET', path: '/api/votes/recent', description: 'Get recent votes' },
+      { method: 'GET', path: '/api/votes/admin/all', description: 'Get all votes (admin)' },
+      { method: 'GET', path: '/api/votes/admin/age-stats', description: 'Get age statistics (admin)' },
+      { method: 'GET', path: '/api/votes/admin/candidate-stats', description: 'Get candidate statistics (admin)' }
+    ]
+  });
+});
 
+// ==================== ERROR HANDLER ====================
 app.use(errorHandler);
 
-// ============================================
-// SERVER STARTUP
-// ============================================
-
+// ==================== SERVER STARTUP ====================
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, () => {
   console.log('\n' + '='.repeat(60));
-  console.log('✅ SERVER STARTED SUCCESSFULLY');
+  console.log(`🚀 NEPAL ELECTION 2026 BACKEND SERVER`);
   console.log('='.repeat(60));
-  console.log(`🌐 URL: http://0.0.0.0:${PORT}`);
-  console.log(`🔗 API: http://0.0.0.0:${PORT}/api`);
-  console.log(`❤️  Health: http://0.0.0.0:${PORT}/health`);
+  console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📍 Port: ${PORT}`);
+  console.log(`🌐 URL: http://localhost:${PORT}`);
   console.log(`💾 Database: ${mongoose.connection.readyState === 1 ? '✅ Connected' : '❌ Disconnected'}`);
-  
-  if (mongoose.connection.readyState === 1) {
-    console.log(`📁 DB Name: ${mongoose.connection.name}`);
-  }
-  
-  console.log('\n🛣️  AVAILABLE ENDPOINTS:');
-  console.log(`   • POST /api/votes - Cast a vote`);
-  console.log(`   • GET  /api/votes/stats - Get statistics`);
-  console.log(`   • GET  /api/votes/recent - Get recent votes`);
-  console.log(`   • GET  /health - Health check`);
-  
-  console.log('\n🌐 FRONTEND URL:');
-  console.log(`   • https://nepalvote.onrender.com`);
-  
   console.log('='.repeat(60));
-});
-
-// ============================================
-// ERROR HANDLING
-// ============================================
-
-process.on('unhandledRejection', (err) => {
-  console.error('❌ Unhandled Promise Rejection:', err.message);
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err.message);
-  process.exit(1);
+  console.log('\n📋 Available Routes:');
+  console.log('  GET  /                    - API Information');
+  console.log('  GET  /health              - Health Check');
+  console.log('  POST /api/votes           - Cast a vote');
+  console.log('  GET  /api/votes/stats     - Vote statistics');
+  console.log('  GET  /api/votes/recent    - Recent votes');
+  console.log('  GET  /api/votes/admin/all - All votes (admin)');
+  console.log('='.repeat(60));
 });
 
 module.exports = { app, server };
