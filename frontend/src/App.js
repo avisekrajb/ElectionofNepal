@@ -2,8 +2,12 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import AdminDashboard from './components/AdminDashboard';
 import { CANDIDATES, TOAST_STYLE } from './utils/constants';
 import { castVote, getVoteStats, getRecentVotes } from './api/voteApi';
+import { 
+  submitFeedback as apiSubmitFeedback, 
+  getAllFeedbacks as apiGetAllFeedbacks,
+  getFeedbackCount as apiGetFeedbackCount 
+} from './api/feedbackApi';
 import './styles/globals.css';
-import VoiceSearch from './components/VoiceSearch';
 
 // Language translations
 const TRANSLATIONS = {
@@ -193,6 +197,13 @@ export default function App() {
     votesByCandidate: []
   });
 
+  // Feedback system states
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [feedbackCount, setFeedbackCount] = useState(0);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
   /* countdown timer */
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
@@ -231,10 +242,12 @@ export default function App() {
   /* marquee — fetch from backend */
   const [marqueeItems, setMarqueeItems] = useState([]);
   
-  // Fetch vote statistics on load
+  // Fetch vote statistics and feedbacks on load
   useEffect(() => {
     fetchVoteStats();
     fetchRecentVotes();
+    fetchFeedbacks();
+    fetchFeedbackCount();
     
     // Refresh stats every 30 seconds
     const interval = setInterval(() => {
@@ -328,9 +341,81 @@ export default function App() {
     }
   };
 
+  const fetchFeedbacks = async () => {
+    try {
+      const response = await apiGetAllFeedbacks();
+      if (response.success) {
+        setFeedbacks(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch feedbacks:', error);
+    }
+  };
+
+  const fetchFeedbackCount = async () => {
+    try {
+      const response = await apiGetFeedbackCount();
+      if (response.success) {
+        setFeedbackCount(response.count);
+      }
+    } catch (error) {
+      console.error('Failed to fetch feedback count:', error);
+    }
+  };
+
   const addMarquee = useCallback((name, party, icon) => {
     setMarqueeItems(prev => [{ name, party, icon }, ...prev]);
   }, []);
+
+  /* ── FEEDBACK SUBMISSION ── */
+  const handleSubmitFeedback = async () => {
+    if (!registered) {
+      toast("Please register first to submit feedback!", "warn");
+      setSheetPage("register");
+      setShowSheet(true);
+      return;
+    }
+
+    if (!feedbackMessage.trim()) {
+      toast("Please enter your feedback message", "warn");
+      return;
+    }
+
+    if (feedbackMessage.trim().length < 5) {
+      toast("Feedback must be at least 5 characters", "warn");
+      return;
+    }
+
+    setFeedbackLoading(true);
+    try {
+      const feedbackData = {
+        name: user.name.trim(),
+        age: parseInt(user.age, 10),
+        message: feedbackMessage.trim()
+      };
+
+      const response = await apiSubmitFeedback(feedbackData);
+      
+      if (response.success) {
+        toast(response.message, "success");
+        setFeedbackMessage("");
+        setShowFeedback(false);
+        
+        // Refresh feedback list and count
+        fetchFeedbacks();
+        fetchFeedbackCount();
+        
+        // Auto-reply toast
+        setTimeout(() => {
+          toast("Thank you for joining us! Our developer will reply soon. 💌", "info");
+        }, 1000);
+      }
+    } catch (error) {
+      toast(error.message || "Failed to submit feedback", "error");
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
 
   /* ── REGISTER ── */
   const handleRegister = () => {
@@ -1560,6 +1645,270 @@ export default function App() {
           paddingLeft: 14, 
           paddingRight: 14 
         }}>
+          {/* Existing footer content... */}
+          
+          {/* Feedback Button Row */}
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "space-between", 
+            marginTop: 12,
+            paddingTop: 12,
+            borderTop: "1px solid rgba(203,213,225,0.2)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button 
+                onClick={() => setShowFeedback(!showFeedback)}
+                style={{ 
+                  background: "linear-gradient(135deg,rgba(139,92,246,0.2),rgba(139,92,246,0.15))", 
+                  border: "1px solid rgba(139,92,246,0.4)", 
+                  borderRadius: 10, 
+                  padding: "6px 12px", 
+                  color: "#6d28d9", 
+                  fontSize: 10, 
+                  fontWeight: 700, 
+                  cursor: "pointer", 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 4, 
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+                  transition: "all .2s"
+                }}
+              >
+                <span style={{ fontSize: 12 }}>💬</span>
+                Feedback ({feedbackCount})
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d={showFeedback ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"}/>
+                </svg>
+              </button>
+            </div>
+            
+            <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 500 }}>
+              {feedbacks.length > 0 && `${feedbacks.length} comments`}
+            </div>
+          </div>
+
+          {/* Feedback Input Section */}
+          {showFeedback && (
+            <div style={{ 
+              marginTop: 12,
+              animation: "fadeIn .3s ease"
+            }}>
+              {/* Feedback Input */}
+              <div style={{ 
+                background: "rgba(255,255,255,0.8)", 
+                borderRadius: 12, 
+                padding: "10px", 
+                border: "1px solid rgba(203,213,225,0.5)",
+                marginBottom: 10
+              }}>
+                <textarea
+                  placeholder="Share your feedback or suggestions..."
+                  value={feedbackMessage}
+                  onChange={(e) => setFeedbackMessage(e.target.value)}
+                  maxLength={500}
+                  style={{
+                    width: "100%",
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    color: "#1e293b",
+                    fontSize: 12,
+                    minHeight: 60,
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                    lineHeight: 1.4
+                  }}
+                />
+                <div style={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  alignItems: "center", 
+                  marginTop: 8 
+                }}>
+                  <span style={{ 
+                    fontSize: 9, 
+                    color: feedbackMessage.length >= 500 ? "#ef4444" : "#64748b" 
+                  }}>
+                    {feedbackMessage.length}/500
+                  </span>
+                  <button
+                    onClick={handleSubmitFeedback}
+                    disabled={!feedbackMessage.trim() || feedbackLoading}
+                    style={{ 
+                      background: !feedbackMessage.trim() || feedbackLoading 
+                        ? "rgba(203,213,225,0.5)" 
+                        : "linear-gradient(135deg,#8b5cf6,#6366f1)", 
+                      border: "none", 
+                      borderRadius: 8, 
+                      padding: "6px 16px", 
+                      color: "#fff", 
+                      fontSize: 11, 
+                      fontWeight: 600, 
+                      cursor: !feedbackMessage.trim() || feedbackLoading ? "not-allowed" : "pointer", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: 4,
+                      opacity: !feedbackMessage.trim() || feedbackLoading ? 0.6 : 1,
+                      transition: "all .2s"
+                    }}
+                  >
+                    {feedbackLoading ? (
+                      <>
+                        <div className="loading-dots">
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        Send
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <path d="M22 2L11 13"/>
+                          <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Feedback List */}
+              <div style={{ 
+                maxHeight: 200, 
+                overflowY: "auto",
+                paddingRight: 4
+              }}>
+                {feedbacks.length === 0 ? (
+                  <div style={{ 
+                    textAlign: "center", 
+                    padding: "20px 0", 
+                    color: "#94a3b8", 
+                    fontSize: 11 
+                  }}>
+                    <div style={{ fontSize: 24, marginBottom: 8, opacity: 0.4 }}>💬</div>
+                    No feedback yet. Be the first to share!
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {feedbacks.map((feedback, index) => (
+                      <div 
+                        key={index}
+                        style={{ 
+                          background: "rgba(255,255,255,0.7)", 
+                          borderRadius: 10, 
+                          padding: "10px", 
+                          border: "1px solid rgba(203,213,225,0.3)",
+                          animation: "fadeIn .3s ease",
+                          animationDelay: `${index * 0.05}s`
+                        }}
+                      >
+                        <div style={{ 
+                          display: "flex", 
+                          justifyContent: "space-between", 
+                          alignItems: "flex-start", 
+                          marginBottom: 6 
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <div style={{ 
+                              width: 20, 
+                              height: 20, 
+                              borderRadius: "50%", 
+                              background: "linear-gradient(135deg,#f0abfc,#a78bfa)", 
+                              display: "flex", 
+                              alignItems: "center", 
+                              justifyContent: "center", 
+                              fontSize: 10, 
+                              color: "#fff", 
+                              fontWeight: 700 
+                            }}>
+                              {feedback.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ 
+                                fontSize: 10.5, 
+                                fontWeight: 700, 
+                                color: "#475569" 
+                              }}>
+                                {feedback.name}
+                              </div>
+                              <div style={{ 
+                                fontSize: 8, 
+                                color: "#94a3b8", 
+                                marginTop: 1 
+                              }}>
+                                {new Date(feedback.createdAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                          {feedback.status === 'replied' && (
+                            <div style={{ 
+                              background: "rgba(16,185,129,0.1)", 
+                              border: "1px solid rgba(16,185,129,0.3)", 
+                              borderRadius: 6, 
+                              padding: "2px 6px", 
+                              fontSize: 8, 
+                              color: "#059669", 
+                              fontWeight: 600 
+                            }}>
+                              Replied
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div style={{ 
+                          fontSize: 11, 
+                          color: "#4b5563", 
+                          lineHeight: 1.4, 
+                          marginBottom: 8 
+                        }}>
+                          {feedback.message}
+                        </div>
+                        
+                        {feedback.adminReply && (
+                          <div style={{ 
+                            background: "rgba(249,250,251,0.9)", 
+                            borderRadius: 8, 
+                            padding: "8px", 
+                            borderLeft: "3px solid #10b981",
+                            marginTop: 8
+                          }}>
+                            <div style={{ 
+                              display: "flex", 
+                              alignItems: "center", 
+                              gap: 4, 
+                              marginBottom: 4 
+                            }}>
+                              <span style={{ fontSize: 10, color: "#059669" }}>✅</span>
+                              <span style={{ 
+                                fontSize: 9, 
+                                color: "#059669", 
+                                fontWeight: 700 
+                              }}>
+                                Admin Reply
+                              </span>
+                            </div>
+                            <div style={{ 
+                              fontSize: 10.5, 
+                              color: "#374151", 
+                              lineHeight: 1.3 
+                            }}>
+                              {feedback.adminReply}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div style={{ 
             display: "flex", 
             alignItems: "center", 
@@ -1576,7 +1925,7 @@ export default function App() {
             </div>
             <div style={{ display: "flex", gap: 7 }}>
               <a 
-                href="" 
+                href="https://www.facebook.com/abhishek.razwanc" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 style={{ 
@@ -1597,7 +1946,7 @@ export default function App() {
                 </svg>
               </a>
               <a 
-                href="https://tiktok.com" 
+                href="https://www.tiktok.com/@engineerbeta?is_from_webapp=1&sender_device=pc" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 style={{ 
@@ -1618,7 +1967,7 @@ export default function App() {
                 </svg>
               </a>
               <a 
-                href="https://wa.me/9779800000000" 
+                href="https://wa.me/9779824380896" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 style={{ 
@@ -1645,9 +1994,10 @@ export default function App() {
             color: "#94a3b8", 
             textAlign: "center", 
             lineHeight: 1.4, 
-            fontWeight: 500 
+            fontWeight: 500,
+            marginTop: showFeedback ? 12 : 0
           }}>
-            {t('developedBy')}
+            Developed with ❤️ for democratic Nepal
           </div>
         </div>
       </div>
