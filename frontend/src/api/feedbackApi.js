@@ -1,114 +1,96 @@
-// feedbackApi.js - COMPLETE FIXED VERSION
-import API from './api'; // Make sure this imports your actual API instance
+// feedbackApi.js - UPDATED VERSION
+import axios from 'axios';
 
-// Helper to format error messages
-const formatError = (error) => {
-  if (error.response) {
-    return {
-      message: error.response.data?.message || `Server error: ${error.response.status}`,
-      status: error.response.status,
-      data: error.response.data
-    };
-  } else if (error.request) {
-    return {
-      message: 'No response from server. Please check your connection.',
-      status: 0
-    };
-  } else {
-    return {
-      message: error.message,
-      status: -1
-    };
+// Create axios instance
+const API = axios.create({
+  baseURL: 'https://electionofnepal.onrender.com',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  timeout: 30000,
+  withCredentials: false
+});
+
+// ==================== REQUEST INTERCEPTOR ====================
+API.interceptors.request.use(
+  (config) => {
+    console.log(`🚀 Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request Error:', error);
+    return Promise.reject(error);
   }
-};
+);
 
-// Submit feedback
+// ==================== RESPONSE INTERCEPTOR ====================
+API.interceptors.response.use(
+  (response) => {
+    console.log(`✅ Response: ${response.status} ${response.config.url}`);
+    return response;
+  },
+  (error) => {
+    console.error('❌ API Error:', {
+      message: error.message,
+      url: error.config?.url,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    
+    let errorMessage = 'Server error';
+    
+    if (error.response) {
+      if (error.response.status === 404) {
+        errorMessage = `Endpoint not found: ${error.config?.url}`;
+      } else if (error.response.status === 500) {
+        errorMessage = 'Internal server error';
+      } else {
+        errorMessage = error.response.data?.message || `Error ${error.response.status}`;
+      }
+    } else if (error.request) {
+      errorMessage = 'No response from server';
+    }
+    
+    return Promise.reject(new Error(errorMessage));
+  }
+);
+
+// ==================== FEEDBACK API FUNCTIONS ====================
 export const submitFeedback = async (feedbackData) => {
   try {
-    console.log('📝 Submitting feedback to /api/feedback...');
-    
-    // Ensure required fields
-    const dataToSend = {
-      ...feedbackData,
-      timestamp: feedbackData.timestamp || new Date().toISOString()
-    };
-    
-    console.log('Data being sent:', dataToSend);
-    
-    const response = await API.post('/api/feedback', dataToSend);
+    console.log('💬 Submitting feedback:', feedbackData);
+    const response = await API.post('/api/feedback', feedbackData);
     console.log('✅ Feedback submitted successfully');
-    console.log('Response:', response.data);
-    
     return response.data;
   } catch (error) {
-    const formattedError = formatError(error);
-    console.error('❌ Feedback submission failed:', formattedError);
-    throw new Error(formattedError.message);
+    console.error('❌ Feedback submission failed:', error.message);
+    throw error;
   }
 };
 
-// Get all feedback
 export const getAllFeedbacks = async () => {
   try {
-    console.log('📋 Fetching all feedback from /api/feedback...');
+    console.log('📋 Fetching all feedbacks...');
     const response = await API.get('/api/feedback');
-    console.log(`✅ Retrieved ${response.data?.length || 0} feedback items`);
+    console.log('✅ Feedbacks fetched successfully');
     return response.data;
   } catch (error) {
-    const formattedError = formatError(error);
-    console.error('❌ Failed to fetch feedback:', formattedError);
-    throw new Error(formattedError.message);
+    console.error('❌ Failed to fetch feedbacks:', error.message);
+    throw error;
   }
 };
 
-// Get feedback count
 export const getFeedbackCount = async () => {
   try {
     console.log('🔢 Fetching feedback count...');
     const response = await API.get('/api/feedback/count');
-    console.log(`✅ Feedback count: ${response.data?.count || 0}`);
+    console.log('✅ Feedback count fetched');
     return response.data;
   } catch (error) {
-    const formattedError = formatError(error);
-    console.error('❌ Failed to fetch feedback count:', formattedError);
-    throw new Error(formattedError.message);
+    console.error('❌ Failed to fetch feedback count:', error.message);
+    throw error;
   }
 };
 
-// Test all feedback endpoints
-export const testFeedbackAPI = async () => {
-  const results = [];
-  
-  console.log('🧪 Testing Feedback API Endpoints');
-  console.log('='.repeat(40));
-  
-  // Test 1: POST feedback
-  try {
-    const testFeedback = {
-      name: "API Test User",
-      email: "apitest@example.com",
-      message: "Testing feedback API connection",
-      rating: 5
-    };
-    
-    const postResult = await submitFeedback(testFeedback);
-    results.push({ test: 'POST /api/feedback', status: '✅ Success', result: postResult });
-  } catch (error) {
-    results.push({ test: 'POST /api/feedback', status: '❌ Failed', error: error.message });
-  }
-  
-  // Test 2: GET feedback
-  try {
-    const feedbacks = await getAllFeedbacks();
-    results.push({ 
-      test: 'GET /api/feedback', 
-      status: '✅ Success', 
-      result: `Found ${feedbacks.length} items` 
-    });
-  } catch (error) {
-    results.push({ test: 'GET /api/feedback', status: '❌ Failed', error: error.message });
-  }
-  
-  console.table(results);
-  return results;
-};
+export default API;
