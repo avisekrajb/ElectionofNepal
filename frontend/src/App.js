@@ -2012,7 +2012,7 @@ useEffect(() => {
             fontWeight: 500,
             marginTop: showFeedback ? 12 : 0
           }}>
-            Developed with ❤️ for democratic Nepal
+            Made by Abhishek ❤️ for democratic Nepal
           </div>
         </div>
       </div>
