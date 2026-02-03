@@ -243,20 +243,25 @@ export default function App() {
   const [marqueeItems, setMarqueeItems] = useState([]);
   
   // Fetch vote statistics and feedbacks on load
-  useEffect(() => {
+ // Replace the entire useEffect block (around line 95-108 in your App.js) with this:
+
+// Fetch vote statistics and feedbacks on load
+useEffect(() => {
+  // Initial fetch
+  fetchVoteStats();
+  fetchRecentVotes();
+  fetchFeedbacks();
+  fetchFeedbackCount();
+  
+  // Refresh stats less frequently - every 60 seconds instead of 30
+  const interval = setInterval(() => {
     fetchVoteStats();
     fetchRecentVotes();
-    fetchFeedbacks();
-    fetchFeedbackCount();
-    
-    // Refresh stats every 30 seconds
-    const interval = setInterval(() => {
-      fetchVoteStats();
-      fetchRecentVotes();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
+    // Note: Removed feedback fetches from interval to reduce load
+  }, 60000); // Changed from 30000 to 60000 (1 minute)
+  
+  return () => clearInterval(interval);
+}, []);
 
   // Save user data to localStorage whenever it changes
   useEffect(() => {
