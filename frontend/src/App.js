@@ -124,7 +124,7 @@ const TRANSLATIONS = {
     noCandidatesFound: "कुनै उम्मेदवार भेटिएन",
     
     // Live activity
-    liveActivity: "सजीव गतिविधि",
+    liveActivity: "प्प्रत्यक्ष",
     votes: "मतहरू",
     noVotesYet: "अहिलेसम्म कुनै मत छैन।",
     beFirstToVote: "पहिलो मत दिनुहोस्!",
