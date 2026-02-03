@@ -409,22 +409,24 @@ const handleSubmitFeedback = async () => {
       
       // Auto-reply toast
       setTimeout(() => {
-        toast("Thank you for joining us! Our developer will reply soon. 💌", "info");
+        toast("Thank you for your valuable feedback! Our team will review it soon. 💌", "info");
       }, 1000);
+    } else {
+      toast(response.message || "Failed to submit feedback", "error");
     }
   } catch (error) {
-    // Check if it's a 404 endpoint error
+    // Check for specific error messages from api.js
     if (error.message && error.message.includes('Endpoint not found')) {
-  toast("Feedback feature is temporarily unavailable. Please try again later.", "error");
-  console.log("Feedback endpoint not available:", error.message);
-}
+      toast("Feedback feature is temporarily unavailable. Please try again later.", "error");
+    } else if (error.message && error.message.includes('No response from server')) {
+      toast("Cannot connect to server. Please check your internet connection.", "error");
     } else {
       toast(error.message || "Failed to submit feedback", "error");
     }
   } finally {
     setFeedbackLoading(false);
   }
-};    
+};
     const response = await apiSubmitFeedback(feedbackData);
     
     if (response.success) {
