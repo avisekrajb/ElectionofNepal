@@ -104,7 +104,7 @@ const TRANSLATIONS = {
     // Header
     election: "नेपाल निर्वाचन",
     year: "२०२६",
-    voteDay: "मतदान दिवस: December 21, 2082",
+    voteDay: "मतदान दिवस:  21 Falgun 2082 / Voting starts 7:00 AM – ends 5:00 PM",
     days: "दिन",
     hours: "घण्टा",
     minutes: "मिनेट",
