@@ -414,9 +414,10 @@ const handleSubmitFeedback = async () => {
     }
   } catch (error) {
     // Check if it's a 404 endpoint error
-    if (error.endpointNotFound) {
-      toast("Feedback feature is temporarily unavailable. Please try again later.", "error");
-      console.log("Feedback endpoint not available:", error.message);
+    if (error.message && error.message.includes('Endpoint not found')) {
+  toast("Feedback feature is temporarily unavailable. Please try again later.", "error");
+  console.log("Feedback endpoint not available:", error.message);
+}
     } else {
       toast(error.message || "Failed to submit feedback", "error");
     }
