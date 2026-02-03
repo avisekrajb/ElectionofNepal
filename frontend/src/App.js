@@ -295,52 +295,52 @@ export default function App() {
     }
   }, []);
 
-  const fetchVoteStats = async () => {
-    try {
-      const response = await getVoteStats();
-      if (response.success) {
-        setVoteStats({
-          totalVotes: response.data.totalVotes,
-          votesByCandidate: response.data.votesByCandidate
-        });
-        
-        // Update local candVotes state
-        const updatedVotes = { ...candVotes };
-        response.data.votesByCandidate.forEach(item => {
-          if (updatedVotes[item._id]) {
-            updatedVotes[item._id] = item.votes;
-          }
-        });
-        setCandVotes(updatedVotes);
-      }
-    } catch (error) {
-      console.error('Failed to fetch vote stats:', error);
+ const fetchVoteStats = async () => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+    const response = await getVoteStats();
+    if (response.success) {
+      setVoteStats({
+        totalVotes: response.data.totalVotes,
+        votesByCandidate: response.data.votesByCandidate
+      });
+      
+      const updatedVotes = { ...candVotes };
+      response.data.votesByCandidate.forEach(item => {
+        if (updatedVotes[item._id]) {
+          updatedVotes[item._id] = item.votes;
+        }
+      });
+      setCandVotes(updatedVotes);
     }
-  };
+  } catch (error) {
+    console.error('Failed to fetch vote stats:', error);
+  }
+};
 
   const fetchRecentVotes = async () => {
-    try {
-      const response = await getRecentVotes();
-      if (response.success) {
-        const marqueeData = response.data.map(vote => {
-          const candidate = CANDIDATES.find(c => 
-            c.party === vote.candidateParty || 
-            c.name === vote.candidateName
-          );
-          return {
-            name: vote.name,
-            party: vote.candidateParty,
-            icon: candidate?.icon || "🗳️",
-            candidateName: vote.candidateName
-          };
-        });
-        setMarqueeItems(marqueeData);
-      }
-    } catch (error) {
-      console.error('Failed to fetch recent votes:', error);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
+    const response = await getRecentVotes();
+    if (response.success) {
+      const marqueeData = response.data.map(vote => {
+        const candidate = CANDIDATES.find(c => 
+          c.party === vote.candidateParty || 
+          c.name === vote.candidateName
+        );
+        return {
+          name: vote.name,
+          party: vote.candidateParty,
+          icon: candidate?.icon || "🗳️",
+          candidateName: vote.candidateName
+        };
+      });
+      setMarqueeItems(marqueeData);
     }
-  };
-
+  } catch (error) {
+    console.error('Failed to fetch recent votes:', error);
+  }
+};
   const fetchFeedbacks = async () => {
     try {
       const response = await apiGetAllFeedbacks();
