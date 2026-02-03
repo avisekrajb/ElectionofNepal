@@ -39,6 +39,7 @@ const TRANSLATIONS = {
     votes: "votes",
     noVotesYet: "No votes yet.",
     beFirstToVote: "Be the first to vote!",
+    seeAllVotes: "See All Votes",
     
     // Footer
     copyright: "© 2026 Nepal Election Commission",
@@ -60,9 +61,22 @@ const TRANSLATIONS = {
     cancel: "Cancel",
     confirmLogout: "Logout",
     
+    exitModalTitle: "Exit Confirmation",
+    exitModalDesc: "Are you sure you want to exit? You will be logged out and all data will be cleared.",
+    confirmExit: "Exit",
+    stay: "Stay",
+    
     // Vote count modal
     voteCountTitle: "📊 Vote Count",
     totalVotes: "Total votes:",
+    
+    // See All Votes Modal
+    seeAllVotesTitle: "📋 All Votes",
+    voterName: "Voter Name",
+    candidateVoted: "Candidate Voted",
+    party: "Party",
+    time: "Time",
+    back: "Back",
     
     // Toasts
     pleaseEnterName: "Please enter your name",
@@ -80,7 +94,11 @@ const TRANSLATIONS = {
     
     // Follow text
     follow: "Follow:",
-    live: "Live"
+    live: "Live",
+    
+    // Feedback
+    viewMore: "View More",
+    viewLess: "View Less"
   },
   ne: {
     // Header
@@ -110,6 +128,7 @@ const TRANSLATIONS = {
     votes: "मतहरू",
     noVotesYet: "अहिलेसम्म कुनै मत छैन।",
     beFirstToVote: "पहिलो मत दिनुहोस्!",
+    seeAllVotes: "सबै मत हेर्नुहोस्",
     
     // Footer
     copyright: "© २०२६ नेपाल निर्वाचन आयोग",
@@ -131,9 +150,22 @@ const TRANSLATIONS = {
     cancel: "रद्द गर्नुहोस्",
     confirmLogout: "लग आउट",
     
+    exitModalTitle: "बाहिर निस्कन पुष्टिकरण",
+    exitModalDesc: "तपाईं निश्चित रूपमा बाहिर निस्कन चाहनुहुन्छ? तपाईं लग आउट हुनुहुनेछ र सबै डाटा हटाइनेछ।",
+    confirmExit: "बाहिर निस्कनुहोस्",
+    stay: "रहनुहोस्",
+    
     // Vote count modal
     voteCountTitle: "📊 मत गणना",
     totalVotes: "कुल मतहरू:",
+    
+    // See All Votes Modal
+    seeAllVotesTitle: "📋 सबै मतहरू",
+    voterName: "मतदाता नाम",
+    candidateVoted: "मत दिईएको उम्मेदवार",
+    party: "दल",
+    time: "समय",
+    back: "पछाडि",
     
     // Toasts
     pleaseEnterName: "कृपया आफ्नो नाम हाल्नुहोस्",
@@ -151,7 +183,11 @@ const TRANSLATIONS = {
     
     // Follow text
     follow: "पछ्याउनुहोस्:",
-    live: "सजीव"
+    live: "सजीव",
+    
+    // Feedback
+    viewMore: "थप हेर्नुहोस्",
+    viewLess: "कम हेर्नुहोस्"
   }
 };
 
@@ -191,6 +227,8 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [showTipsModal, setShowTipsModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [showAllVotesModal, setShowAllVotesModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [voteStats, setVoteStats] = useState({
     totalVotes: 0,
@@ -203,6 +241,8 @@ export default function App() {
   const [feedbacks, setFeedbacks] = useState([]);
   const [feedbackCount, setFeedbackCount] = useState(0);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [showAllFeedbacks, setShowAllFeedbacks] = useState(false);
+  const [allVotesData, setAllVotesData] = useState([]);
 
   /* countdown timer */
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -242,26 +282,38 @@ export default function App() {
   /* marquee — fetch from backend */
   const [marqueeItems, setMarqueeItems] = useState([]);
   
-  // Fetch vote statistics and feedbacks on load
- // Replace the entire useEffect block (around line 95-108 in your App.js) with this:
+  // Handle back button/exit
+  useEffect(() => {
+    const handleBackButton = (e) => {
+      if (registered) {
+        e.preventDefault();
+        setShowExitModal(true);
+      }
+    };
 
-// Fetch vote statistics and feedbacks on load
-useEffect(() => {
-  // Initial fetch
-  fetchVoteStats();
-  fetchRecentVotes();
-  fetchFeedbacks();
-  fetchFeedbackCount();
-  
-  // Refresh stats less frequently - every 60 seconds instead of 30
-  const interval = setInterval(() => {
+    window.addEventListener('popstate', handleBackButton);
+    
+    return () => {
+      window.removeEventListener('popstate', handleBackButton);
+    };
+  }, [registered]);
+
+  // Fetch vote statistics and feedbacks on load
+  useEffect(() => {
+    // Initial fetch
     fetchVoteStats();
     fetchRecentVotes();
-    // Note: Removed feedback fetches from interval to reduce load
-  }, 60000); // Changed from 30000 to 60000 (1 minute)
-  
-  return () => clearInterval(interval);
-}, []);
+    fetchFeedbacks();
+    fetchFeedbackCount();
+    
+    // Refresh stats less frequently - every 60 seconds instead of 30
+    const interval = setInterval(() => {
+      fetchVoteStats();
+      fetchRecentVotes();
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Save user data to localStorage whenever it changes
   useEffect(() => {
@@ -269,7 +321,7 @@ useEffect(() => {
       localStorage.setItem('election_user', JSON.stringify({
         registered,
         user,
-        isAdmin // Save admin status
+        isAdmin
       }));
     }
   }, [registered, user, isAdmin]);
@@ -300,52 +352,66 @@ useEffect(() => {
     }
   }, []);
 
- const fetchVoteStats = async () => {
-  try {
-    await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
-    const response = await getVoteStats();
-    if (response.success) {
-      setVoteStats({
-        totalVotes: response.data.totalVotes,
-        votesByCandidate: response.data.votesByCandidate
-      });
-      
-      const updatedVotes = { ...candVotes };
-      response.data.votesByCandidate.forEach(item => {
-        if (updatedVotes[item._id]) {
-          updatedVotes[item._id] = item.votes;
-        }
-      });
-      setCandVotes(updatedVotes);
+  const fetchVoteStats = async () => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const response = await getVoteStats();
+      if (response.success) {
+        setVoteStats({
+          totalVotes: response.data.totalVotes,
+          votesByCandidate: response.data.votesByCandidate
+        });
+        
+        const updatedVotes = { ...candVotes };
+        response.data.votesByCandidate.forEach(item => {
+          if (updatedVotes[item._id]) {
+            updatedVotes[item._id] = item.votes;
+          }
+        });
+        setCandVotes(updatedVotes);
+      }
+    } catch (error) {
+      console.error('Failed to fetch vote stats:', error);
     }
-  } catch (error) {
-    console.error('Failed to fetch vote stats:', error);
-  }
-};
+  };
 
   const fetchRecentVotes = async () => {
-  try {
-    await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
-    const response = await getRecentVotes();
-    if (response.success) {
-      const marqueeData = response.data.map(vote => {
-        const candidate = CANDIDATES.find(c => 
-          c.party === vote.candidateParty || 
-          c.name === vote.candidateName
-        );
-        return {
-          name: vote.name,
-          party: vote.candidateParty,
-          icon: candidate?.icon || "🗳️",
-          candidateName: vote.candidateName
-        };
-      });
-      setMarqueeItems(marqueeData);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const response = await getRecentVotes();
+      if (response.success) {
+        const marqueeData = response.data.map(vote => {
+          const candidate = CANDIDATES.find(c => 
+            c.party === vote.candidateParty || 
+            c.name === vote.candidateName
+          );
+          return {
+            name: vote.name,
+            party: vote.candidateParty,
+            icon: candidate?.icon || "🗳️",
+            candidateName: vote.candidateName,
+            time: vote.createdAt
+          };
+        });
+        setMarqueeItems(marqueeData);
+        setAllVotesData(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch recent votes:', error);
     }
-  } catch (error) {
-    console.error('Failed to fetch recent votes:', error);
-  }
-};
+  };
+
+  const fetchAllVotes = async () => {
+    try {
+      const response = await getRecentVotes(100); // Fetch all votes
+      if (response.success) {
+        setAllVotesData(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch all votes:', error);
+    }
+  };
+
   const fetchFeedbacks = async () => {
     try {
       const response = await apiGetAllFeedbacks();
@@ -369,7 +435,7 @@ useEffect(() => {
   };
 
   const addMarquee = useCallback((name, party, icon) => {
-    setMarqueeItems(prev => [{ name, party, icon }, ...prev]);
+    setMarqueeItems(prev => [{ name, party, icon, time: new Date().toISOString() }, ...prev]);
   }, []);
 
   /* ── FEEDBACK SUBMISSION ── */
@@ -406,11 +472,9 @@ useEffect(() => {
         setFeedbackMessage("");
         setShowFeedback(false);
         
-        // Refresh feedback list and count
         fetchFeedbacks();
         fetchFeedbackCount();
         
-        // Auto-reply toast
         setTimeout(() => {
           toast("Thank you for joining us! Our developer will reply soon. 💌", "info");
         }, 1000);
@@ -418,10 +482,8 @@ useEffect(() => {
         toast(response.message || "Failed to submit feedback", "error");
       }
     } catch (error) {
-      // Check for specific error messages from api.js
       if (error.message && error.message.includes('Endpoint not found')) {
         toast("Feedback feature is temporarily unavailable. Please try again later.", "error");
-        console.log("Feedback endpoint not available:", error.message);
       } else if (error.message && error.message.includes('No response from server')) {
         toast("Cannot connect to server. Please check your internet connection.", "error");
       } else {
@@ -471,11 +533,9 @@ useEffect(() => {
 
   /* ── LOGOUT ── */
   const handleLogout = () => {
-    // Clear all localStorage data
     localStorage.removeItem('election_user');
     localStorage.removeItem('election_vote');
     
-    // Reset all state
     setRegistered(false);
     setIsAdmin(false);
     setUser({ name: "", age: "" });
@@ -488,11 +548,9 @@ useEffect(() => {
 
   /* ── ADMIN LOGOUT ── */
   const handleAdminLogout = () => {
-    // Clear all localStorage data
     localStorage.removeItem('election_user');
     localStorage.removeItem('election_vote');
     
-    // Reset all state
     setRegistered(false);
     setIsAdmin(false);
     setUser({ name: "", age: "" });
@@ -500,6 +558,13 @@ useEffect(() => {
     setCandVotes(Object.fromEntries(CANDIDATES.map(c => [c.id, 0])));
     
     toast(TRANSLATIONS[language].adminLoggedOut, "success");
+  };
+
+  /* ── EXIT CONFIRMATION ── */
+  const handleExit = () => {
+    handleLogout();
+    setShowExitModal(false);
+    window.history.back();
   };
 
   /* ── CANDIDATE VOTE (with API call) ── */
@@ -533,7 +598,6 @@ useEffect(() => {
         toast(TRANSLATIONS[language].votedFor.replace('%s', cand?.name), "success");
         addMarquee(user.name, cand?.party, cand?.icon);
         
-        // Refresh stats
         fetchVoteStats();
         fetchRecentVotes();
       }
@@ -556,7 +620,6 @@ useEffect(() => {
 
   const votedCandidate = candVoted ? CANDIDATES.find(c => c.id === candVoted) : null;
 
-  // Merge backend stats with frontend data
   const getCandidateWithVotes = (candidate) => {
     const backendVote = voteStats.votesByCandidate.find(v => v._id === candidate.id);
     return {
@@ -573,6 +636,9 @@ useEffect(() => {
 
   // Get translation function
   const t = (key) => TRANSLATIONS[language][key] || key;
+
+  // Filter feedbacks for display
+  const displayedFeedbacks = showAllFeedbacks ? feedbacks : feedbacks.slice(0, 10);
 
   // Render Admin Dashboard if user is admin
   if (isAdmin) {
@@ -1471,22 +1537,48 @@ useEffect(() => {
             }}>
               {t('liveActivity')}
             </span>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <div style={{ 
-                width: 5, 
-                height: 5, 
-                borderRadius: "50%", 
-                background: "#10b981", 
-                boxShadow: "0 0 6px #10b981", 
-                animation: "livePulse 1.8s ease-in-out infinite" 
-              }}/>
-              <span style={{ 
-                fontSize: 9, 
-                color: "#64748b", 
-                fontWeight: 600 
-              }}>
-                {marqueeItems.length} {marqueeItems.length === 1 ? t('votes').slice(0, -1) : t('votes')}
-              </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button 
+                onClick={() => {
+                  fetchAllVotes();
+                  setShowAllVotesModal(true);
+                }}
+                style={{ 
+                  background: "linear-gradient(135deg,rgba(14,165,233,0.2),rgba(14,165,233,0.15))", 
+                  border: "1px solid rgba(14,165,233,0.4)", 
+                  borderRadius: 8, 
+                  padding: "4px 8px", 
+                  color: "#0284c7", 
+                  fontSize: 8.5, 
+                  fontWeight: 700, 
+                  cursor: "pointer", 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 3, 
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                  transition: "all .2s"
+                }}
+              >
+                <span style={{ fontSize: 9 }}>📋</span>
+                {t('seeAllVotes')}
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <div style={{ 
+                  width: 5, 
+                  height: 5, 
+                  borderRadius: "50%", 
+                  background: "#10b981", 
+                  boxShadow: "0 0 6px #10b981", 
+                  animation: "livePulse 1.8s ease-in-out infinite" 
+                }}/>
+                <span style={{ 
+                  fontSize: 9, 
+                  color: "#64748b", 
+                  fontWeight: 600 
+                }}>
+                  {marqueeItems.length} {marqueeItems.length === 1 ? t('votes').slice(0, -1) : t('votes')}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -1660,8 +1752,6 @@ useEffect(() => {
           paddingLeft: 14, 
           paddingRight: 14 
         }}>
-          {/* Existing footer content... */}
-          
           {/* Feedback Button Row */}
           <div style={{ 
             display: "flex", 
@@ -1791,7 +1881,7 @@ useEffect(() => {
 
               {/* Feedback List */}
               <div style={{ 
-                maxHeight: 200, 
+                maxHeight: 300, 
                 overflowY: "auto",
                 paddingRight: 4
               }}>
@@ -1807,7 +1897,7 @@ useEffect(() => {
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {feedbacks.map((feedback, index) => (
+                    {displayedFeedbacks.map((feedback, index) => (
                       <div 
                         key={index}
                         style={{ 
@@ -1920,6 +2010,35 @@ useEffect(() => {
                     ))}
                   </div>
                 )}
+                
+                {/* View More/Less Button */}
+                {feedbacks.length > 10 && (
+                  <div style={{ textAlign: "center", marginTop: 12 }}>
+                    <button
+                      onClick={() => setShowAllFeedbacks(!showAllFeedbacks)}
+                      style={{
+                        background: "linear-gradient(135deg,rgba(14,165,233,0.2),rgba(14,165,233,0.15))",
+                        border: "1px solid rgba(14,165,233,0.4)",
+                        borderRadius: 8,
+                        padding: "6px 16px",
+                        color: "#0284c7",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        margin: "0 auto",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.06)"
+                      }}
+                    >
+                      {showAllFeedbacks ? t('viewLess') : t('viewMore')}
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <path d={showAllFeedbacks ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"}/>
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1978,7 +2097,7 @@ useEffect(() => {
                 }}
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="#000">
-                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v小三 3.4a4.85 4.85 0 0 1-1-.1z"/>
                 </svg>
               </a>
               <a 
@@ -2184,6 +2303,191 @@ useEffect(() => {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SEE ALL VOTES MODAL */}
+      {showAllVotesModal && (
+        <div style={{ 
+          position: "fixed", 
+          inset: 0, 
+          zIndex: 500, 
+          display: "flex", 
+          flexDirection: "column", 
+          justifyContent: "flex-end", 
+          maxWidth: 375, 
+          margin: "0 auto", 
+          left: 0, 
+          right: 0 
+        }}>
+          <div 
+            onClick={() => setShowAllVotesModal(false)} 
+            style={{ 
+              flex: 1, 
+              background: "rgba(0,0,0,0.4)", 
+              backdropFilter: "blur(4px)", 
+              animation: "fadeIn .25s ease" 
+            }}
+          />
+          <div style={{ 
+            background: "linear-gradient(180deg, #fefefe 0%, #f8fafc 100%)", 
+            borderRadius: "24px 24px 0 0", 
+            paddingBottom: 32, 
+            animation: "sheetUp .35s cubic-bezier(.4,0,.2,1)", 
+            maxHeight: "80vh", 
+            overflowY: "auto", 
+            boxShadow: "0 -10px 40px rgba(0,0,0,0.15)" 
+          }}>
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12, paddingBottom: 8 }}>
+              <div style={{ 
+                width: 40, 
+                height: 4, 
+                borderRadius: 3, 
+                background: "rgba(100,116,139,0.2)" 
+              }}/>
+            </div>
+            <div style={{ padding: "0 20px" }}>
+              <div style={{ 
+                display: "flex", 
+                justifyContent: "space-between", 
+                alignItems: "center", 
+                marginBottom: 16 
+              }}>
+                <div>
+                  <h2 style={{ 
+                    margin: 0, 
+                    fontSize: 19, 
+                    fontWeight: 800, 
+                    color: "#1e293b", 
+                    letterSpacing: -0.4 
+                  }}>
+                    {t('seeAllVotesTitle')}
+                  </h2>
+                  <span style={{ 
+                    fontSize: 11, 
+                    color: "#64748b", 
+                    fontWeight: 500 
+                  }}>
+                    {t('totalVotes')} {allVotesData.length}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setShowAllVotesModal(false)} 
+                  style={{ 
+                    background: "rgba(100,116,139,0.1)", 
+                    border: "1px solid rgba(100,116,139,0.2)", 
+                    borderRadius: "50%", 
+                    width: 32, 
+                    height: 32, 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "center", 
+                    cursor: "pointer", 
+                    color: "#64748b", 
+                    fontSize: 18, 
+                    fontWeight: 700 
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Votes Table */}
+              <div style={{ 
+                background: "rgba(255,255,255,0.8)", 
+                borderRadius: 14, 
+                overflow: "hidden", 
+                border: "1px solid rgba(203,213,225,0.5)",
+                maxHeight: 400,
+                overflowY: "auto"
+              }}>
+                {/* Table Header */}
+                <div style={{ 
+                  display: "grid", 
+                  gridTemplateColumns: "3fr 2fr 2fr 1.5fr", 
+                  background: "linear-gradient(135deg,rgba(14,165,233,0.1),rgba(14,165,233,0.05))", 
+                  borderBottom: "2px solid rgba(14,165,233,0.3)", 
+                  padding: "10px 12px",
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 1
+                }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>{t('voterName')}</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>{t('candidateVoted')}</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>{t('party')}</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>{t('time')}</span>
+                </div>
+
+                {/* Table Rows */}
+                <div>
+                  {allVotesData.map((vote, index) => {
+                    const candidate = CANDIDATES.find(c => 
+                      c.party === vote.candidateParty || 
+                      c.name === vote.candidateName
+                    );
+                    const timeAgo = (dateString) => {
+                      const now = new Date();
+                      const then = new Date(dateString);
+                      const diffMs = now - then;
+                      const diffMins = Math.floor(diffMs / 60000);
+                      const diffHours = Math.floor(diffMs / 3600000);
+                      const diffDays = Math.floor(diffMs / 86400000);
+                      
+                      if (diffMins < 60) return `${diffMins}m`;
+                      if (diffHours < 24) return `${diffHours}h`;
+                      return `${diffDays}d`;
+                    };
+
+                    return (
+                      <div 
+                        key={index}
+                        style={{ 
+                          display: "grid", 
+                          gridTemplateColumns: "3fr 2fr 2fr 1.5fr", 
+                          padding: "10px 12px", 
+                          borderBottom: "1px solid rgba(203,213,225,0.3)",
+                          background: index % 2 === 0 ? "rgba(255,255,255,0.5)" : "rgba(249,250,251,0.5)",
+                          alignItems: "center"
+                        }}
+                      >
+                        <span style={{ fontSize: 10.5, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {vote.name}
+                        </span>
+                        <span style={{ fontSize: 10.5, fontWeight: 600, color: candidate?.color || "#475569", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {vote.candidateName}
+                        </span>
+                        <span style={{ fontSize: 10, fontWeight: 500, color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {vote.candidateParty}
+                        </span>
+                        <span style={{ fontSize: 9, fontWeight: 500, color: "#94a3b8" }}>
+                          {timeAgo(vote.createdAt)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowAllVotesModal(false)} 
+                style={{ 
+                  width: "100%", 
+                  background: "linear-gradient(135deg,rgba(100,116,139,0.2),rgba(100,116,139,0.15))", 
+                  border: "1px solid rgba(100,116,139,0.3)", 
+                  borderRadius: 14, 
+                  padding: "12px 0", 
+                  color: "#64748b", 
+                  fontSize: 14, 
+                  fontWeight: 800, 
+                  cursor: "pointer", 
+                  marginTop: 20, 
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)" 
+                }}
+              >
+                {t('back')}
+              </button>
             </div>
           </div>
         </div>
@@ -2500,6 +2804,131 @@ useEffect(() => {
                   }}
                 >
                   {t('confirmLogout')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EXIT CONFIRMATION MODAL */}
+      {showExitModal && (
+        <div style={{ 
+          position: "fixed", 
+          inset: 0, 
+          zIndex: 500, 
+          display: "flex", 
+          flexDirection: "column", 
+          justifyContent: "flex-end", 
+          maxWidth: 375, 
+          margin: "0 auto", 
+          left: 0, 
+          right: 0 
+        }}>
+          <div 
+            onClick={() => setShowExitModal(false)} 
+            style={{ 
+              flex: 1, 
+              background: "rgba(0,0,0,0.5)", 
+              backdropFilter: "blur(4px)", 
+              animation: "fadeIn .25s ease" 
+            }}
+          />
+          <div style={{ 
+            background: "linear-gradient(180deg, #fefefe 0%, #f8fafc 100%)", 
+            borderRadius: "24px 24px 0 0", 
+            paddingBottom: 32, 
+            animation: "sheetUp .35s cubic-bezier(.4,0,.2,1)", 
+            boxShadow: "0 -10px 40px rgba(0,0,0,0.15)" 
+          }}>
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12, paddingBottom: 8 }}>
+              <div style={{ 
+                width: 40, 
+                height: 4, 
+                borderRadius: 3, 
+                background: "rgba(100,116,139,0.2)" 
+              }}/>
+            </div>
+            <div style={{ padding: "0 20px" }}>
+              <div style={{ textAlign: "center", marginBottom: 18 }}>
+                <div style={{ fontSize: 36, marginBottom: 8 }}>🚪</div>
+                <h2 style={{ 
+                  margin: 0, 
+                  fontSize: 20, 
+                  fontWeight: 800, 
+                  color: "#1e293b", 
+                  letterSpacing: -0.4 
+                }}>
+                  {t('exitModalTitle')}
+                </h2>
+                <p style={{ 
+                  margin: "6px 0 0", 
+                  fontSize: 12, 
+                  color: "#64748b", 
+                  lineHeight: 1.5, 
+                  fontWeight: 500 
+                }}>
+                  {t('exitModalDesc')}
+                </p>
+              </div>
+
+              <div style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 8, 
+                background: "rgba(239,68,68,0.1)", 
+                border: "1.5px solid rgba(239,68,68,0.25)", 
+                borderRadius: 12, 
+                padding: "10px 12px", 
+                marginBottom: 20 
+              }}>
+                <span style={{ fontSize: 16 }}>⚠️</span>
+                <span style={{ 
+                  fontSize: 11.5, 
+                  color: "#dc2626", 
+                  lineHeight: 1.4, 
+                  fontWeight: 600 
+                }}>
+                  {t('logoutWarning')}
+                </span>
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button 
+                  onClick={() => setShowExitModal(false)} 
+                  style={{ 
+                    flex: 1, 
+                    background: "linear-gradient(135deg,rgba(100,116,139,0.2),rgba(100,116,139,0.15))", 
+                    border: "1px solid rgba(100,116,139,0.3)", 
+                    borderRadius: 14, 
+                    padding: "14px 0", 
+                    color: "#64748b", 
+                    fontSize: 15, 
+                    fontWeight: 800, 
+                    cursor: "pointer", 
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)", 
+                    transition: "all .2s" 
+                  }}
+                >
+                  {t('stay')}
+                </button>
+                <button 
+                  onClick={handleExit} 
+                  style={{ 
+                    flex: 1, 
+                    background: "linear-gradient(135deg,#ef4444,#dc2626)", 
+                    border: "none", 
+                    borderRadius: 14, 
+                    padding: "14px 0", 
+                    color: "#fff", 
+                    fontSize: 15, 
+                    fontWeight: 800, 
+                    cursor: "pointer", 
+                    boxShadow: "0 6px 20px rgba(239,68,68,0.35)", 
+                    transition: "all .2s" 
+                  }}
+                >
+                  {t('confirmExit')}
                 </button>
               </div>
             </div>
